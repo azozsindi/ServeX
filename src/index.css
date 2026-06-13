@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --color-immersive-bg: #050810;
+  --color-immersive-card: rgb(15 23 42 / 0.82);
+  --color-immersive-input-bg: rgb(30 41 59 / 0.5);
+  --color-immersive-border: rgba(255, 255, 255, 0.08);
+}
+
+/* Scrollbar adjustment for dark immersive panels */
+.dark ::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+.dark ::-webkit-scrollbar-track {
+  background: #050810;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #1e293b;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb:hover {
+  background: #0284c7;
+}

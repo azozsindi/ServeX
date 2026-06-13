@@ -1,0 +1,93 @@
+{
+  "entities": {
+    "Platform": {
+      "title": "Platform",
+      "description": "An integrated platform / portal used by the general services office",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "url": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string", "enum": ["government", "employment", "business", "justice", "custom", "other"] },
+        "color": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["id", "name", "url", "category", "color", "order"]
+    },
+    "Task": {
+      "title": "Task",
+      "description": "A client transaction or order tracked in the system",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientPhone": { "type": "string" },
+        "platformId": { "type": "string" },
+        "feeAmount": { "type": "number" },
+        "status": { "type": "string", "enum": ["pending", "processing", "completed", "canceled"] },
+        "createdAt": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "title", "clientName", "status", "createdAt"]
+    },
+    "QuickNote": {
+      "title": "QuickNote",
+      "description": "A quick scratchpad sticky note on the dashboard",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "color": { "type": "string", "enum": ["yellow", "blue", "green", "red", "purple", "gray"] },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "title", "content", "color", "updatedAt"]
+    },
+    "SavedTemplate": {
+      "title": "SavedTemplate",
+      "description": "A saved instant messaging text template",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["id", "title", "content", "category"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "Unified Office general configuration settings",
+      "type": "object",
+      "properties": {
+        "officeName": { "type": "string" },
+        "defaultCommission": { "type": "number" }
+      },
+      "required": ["officeName", "defaultCommission"]
+    }
+  },
+  "firestore": {
+    "/platforms/{platformId}": {
+      "schema": "Platform",
+      "description": "Portals and services listed in the system"
+    },
+    "/tasks/{taskId}": {
+      "schema": "Task",
+      "description": "Client orders and general service items"
+    },
+    "/quick_notes/{noteId}": {
+      "schema": "QuickNote",
+      "description": "Sticky notes in the scratchpad"
+    },
+    "/templates/{templateId}": {
+      "schema": "SavedTemplate",
+      "description": "Quick text message response templates"
+    },
+    "/settings/config": {
+      "schema": "Setting",
+      "description": "Central metadata and general settings for the office"
+    }
+  }
+}

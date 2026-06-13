@@ -1,0 +1,6 @@
+{
+  "name": "لوحة تحكم الخدمات العامة",
+  "description": "منصة موحدة وأدوات لإدارة وإنجاز المعاملات الحكومية اليومية لمكتب الخدمات العامة.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

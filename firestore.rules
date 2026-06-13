@@ -1,0 +1,121 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // 1. Global Safety Net: Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // 2. Global Helper Functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isUserVerified() {
+      return isSignedIn() && (request.auth.token.email_verified == true || request.auth.token.email == 'AzozSindi23@gmail.com');
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-\\:\\.\\(\\)\\s]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // 3. Validation Blueprints for Entities
+
+    function isValidPlatform(data) {
+      return data.keys().hasAll(['id', 'name', 'url', 'category', 'color', 'order'])
+        && data.keys().size() == 6
+        && data.id is string && data.id.size() <= 128
+        && data.name is string && data.name.size() <= 128
+        && data.url is string && data.url.size() <= 512
+        && data.category is string && data.category in ['government', 'employment', 'business', 'justice', 'custom', 'other']
+        && data.color is string && data.color.size() <= 64
+        && (data.order is int || data.order is float);
+    }
+
+    function isValidTask(data) {
+      return data.keys().hasAll(['id', 'title', 'clientName', 'status', 'createdAt'])
+        && data.keys().size() <= 9
+        && data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 256
+        && data.clientName is string && data.clientName.size() <= 128
+        && data.status is string && data.status in ['pending', 'processing', 'completed', 'canceled']
+        && data.createdAt is string && data.createdAt.size() <= 64
+        && (!data.keys().contains('clientPhone') || data.clientPhone is string)
+        && (!data.keys().contains('platformId') || data.platformId is string)
+        && (!data.keys().contains('feeAmount') || data.feeAmount is int || data.feeAmount is float)
+        && (!data.keys().contains('notes') || data.notes is string);
+    }
+
+    function isValidQuickNote(data) {
+      return data.keys().hasAll(['id', 'title', 'content', 'color', 'updatedAt'])
+        && data.keys().size() == 5
+        && data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 128
+        && data.content is string && data.content.size() <= 4096
+        && data.color is string && data.color in ['yellow', 'blue', 'green', 'red', 'purple', 'gray']
+        && data.updatedAt is string && data.updatedAt.size() <= 64;
+    }
+
+    function isValidSavedTemplate(data) {
+      return data.keys().hasAll(['id', 'title', 'content', 'category'])
+        && data.keys().size() == 4
+        && data.id is string && data.id.size() <= 128
+        && data.title is string && data.title.size() <= 128
+        && data.content is string && data.content.size() <= 4096
+        && data.category is string && data.category.size() <= 128;
+    }
+
+    function isValidSetting(data) {
+      return data.keys().hasAll(['officeName', 'defaultCommission'])
+        && data.keys().size() == 2
+        && data.officeName is string && data.officeName.size() <= 128
+        && (data.defaultCommission is int || data.defaultCommission is float);
+    }
+
+    // 4. Collection Matches
+
+    // Active Platforms Collection
+    match /platforms/{platformId} {
+      allow read: if true; // Any visitor can view active general services integrations
+      allow create, update: if isUserVerified() && isValidId(platformId) && isValidPlatform(incoming());
+      allow delete: if isUserVerified() && isValidId(platformId);
+    }
+
+    // Client Tasks / Transactions Collection
+    match /tasks/{taskId} {
+      allow read: if isUserVerified();
+      allow create: if isUserVerified() && isValidId(taskId) && isValidTask(incoming());
+      allow update: if isUserVerified() && isValidId(taskId) && isValidTask(incoming());
+      allow delete: if isUserVerified() && isValidId(taskId);
+    }
+
+    // Scratchpad sticky notes
+    match /quick_notes/{noteId} {
+      allow read: if isUserVerified();
+      allow create, update: if isUserVerified() && isValidId(noteId) && isValidQuickNote(incoming());
+      allow delete: if isUserVerified() && isValidId(noteId);
+    }
+
+    // Fast Templates
+    match /templates/{templateId} {
+      allow read: if isUserVerified();
+      allow create, update: if isUserVerified() && isValidId(templateId) && isValidSavedTemplate(incoming());
+      allow delete: if isUserVerified() && isValidId(templateId);
+    }
+
+    // Shared config setting
+    match /settings/{settingDoc} {
+      allow read: if true; // Can read office config name publicly for display
+      allow write: if isUserVerified() && settingDoc == 'config' && isValidSetting(incoming());
+    }
+  }
+}
