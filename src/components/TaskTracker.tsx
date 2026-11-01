@@ -305,8 +305,115 @@ export default function TaskTracker({ tasks, platforms, onSaveTasks }: TaskTrack
           </div>
         </div>
 
-        {/* Orders list table / cards representation */}
-        <div className="overflow-x-auto border border-slate-200/50 dark:border-white/5 rounded-2xl bg-white/40 dark:bg-[#152033]/20 custom-scrollbar">
+        {/* Mobile View: Touch-Friendly Responsive Cards (md:hidden) */}
+        <div className="md:hidden space-y-3">
+          {filteredTasks.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 bg-white/40 dark:bg-[#152033]/20 rounded-2xl border border-slate-200/50 dark:border-white/5 text-xs font-bold">
+              لا توجد معاملات جارية حالياً تطابق الفرز.
+            </div>
+          ) : (
+            filteredTasks.map((task) => {
+              const currPlatform = platforms.find(p => p.id === task.platformId);
+              const statusProps = statusMap[task.status];
+              return (
+                <div
+                  key={task.id}
+                  className="p-4 rounded-2xl bg-white dark:bg-[#152033]/60 border border-slate-200/70 dark:border-white/10 shadow-xs space-y-3 text-right"
+                >
+                  {/* Top row: Title and Status */}
+                  <div className="flex items-start justify-between gap-2">
+                    <h4 className="font-bold text-slate-800 dark:text-white text-sm leading-snug flex-1">
+                      {task.title}
+                    </h4>
+                    <span className={`text-[10px] font-black px-2.5 py-1 rounded-lg border whitespace-nowrap shrink-0 ${statusProps.badge}`}>
+                      {statusProps.label}
+                    </span>
+                  </div>
+
+                  {/* Notes if any */}
+                  {task.notes && (
+                    <div className="text-xs text-slate-500 dark:text-slate-350 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-xl border border-slate-200/40 dark:border-white/5 leading-relaxed">
+                      📝 {task.notes}
+                    </div>
+                  )}
+
+                  {/* Client & Platform info */}
+                  <div className="grid grid-cols-2 gap-2 text-xs pt-1 border-t border-slate-100 dark:border-white/5">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-bold">العميل:</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-200">{task.clientName}</span>
+                    </div>
+
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-bold">المنصة الحكومية:</span>
+                      <span className="font-bold text-slate-700 dark:text-slate-200 truncate block">
+                        {currPlatform ? currPlatform.name : '-'}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Cost & Date */}
+                  <div className="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-white/5">
+                    <div>
+                      <span className="text-[10px] text-slate-400 block font-bold">الأتعاب المستحقة:</span>
+                      <span className="font-mono font-black text-emerald-600 dark:text-emerald-450">
+                        {task.feeAmount ? `${task.feeAmount} ريال` : 'غير محدد'}
+                      </span>
+                    </div>
+
+                    <div className="text-left" dir="ltr">
+                      <span className="text-[10px] text-slate-400 block font-bold text-right">التاريخ:</span>
+                      <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                        {task.createdAt}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Bar: WhatsApp direct button, status changer, delete */}
+                  <div className="pt-2 border-t border-slate-100 dark:border-white/5 flex items-center justify-between gap-2">
+                    {task.clientPhone ? (
+                      <a
+                        href={`https://wa.me/${task.clientPhone.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="min-h-[40px] px-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-bold text-xs flex items-center gap-1.5 transition active:scale-95"
+                      >
+                        <Phone className="h-3.5 w-3.5" />
+                        <span>واتساب</span>
+                      </a>
+                    ) : (
+                      <span className="text-[10px] text-slate-400 font-bold">لا يوجد هاتف</span>
+                    )}
+
+                    <div className="flex items-center gap-2">
+                      <select
+                        value={task.status}
+                        onChange={(e) => handleUpdateStatus(task.id, e.target.value as Task['status'])}
+                        className="text-xs font-bold px-2.5 py-2 rounded-xl border border-slate-200 dark:border-white/10 bg-white dark:bg-[#101928] text-slate-700 dark:text-slate-200 outline-none"
+                      >
+                        <option value="pending">جديدة</option>
+                        <option value="processing">قيد التنفيذ</option>
+                        <option value="completed">مكتملة</option>
+                        <option value="canceled">ملغية</option>
+                      </select>
+
+                      <button
+                        onClick={() => handleDeleteTask(task.id)}
+                        className="min-h-[40px] min-w-[40px] flex items-center justify-center text-rose-500 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 dark:text-rose-400 rounded-xl transition cursor-pointer"
+                        title="حذف الطلب"
+                      >
+                        <Trash className="h-4 w-4" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Desktop View: Full Table (hidden md:block) */}
+        <div className="hidden md:block overflow-x-auto border border-slate-200/50 dark:border-white/5 rounded-2xl bg-white/40 dark:bg-[#152033]/20 custom-scrollbar">
           <table className="w-full text-right text-xs sm:text-sm border-collapse">
             <thead>
               <tr className="bg-slate-100/50 dark:bg-[#152033]/90 text-slate-500 dark:text-slate-400 border-b border-slate-200/50 dark:border-white/5 font-black">
@@ -360,7 +467,7 @@ export default function TaskTracker({ tasks, platforms, onSaveTasks }: TaskTrack
                             {currPlatform.name}
                           </span>
                         ) : (
-                          <span className="text-slate-350">-</span>
+                          <span className="text-slate-355">-</span>
                         )}
                       </td>
                       <td className="p-4 font-mono font-bold text-slate-700 dark:text-slate-200 vertical-align-middle text-xs sm:text-sm">

@@ -74,7 +74,7 @@ export default function PlatformCard({
             target="_blank"
             rel="noopener noreferrer"
             title="الانتقال الفوري للمنصة الرسمية"
-            className="rounded-lg p-1.5 text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           >
             <ArrowUpRight className="h-4 w-4" />
           </a>
@@ -102,30 +102,30 @@ export default function PlatformCard({
       {/* Card Action footer */}
       <div className="mt-4 pt-3 border-t border-slate-200/50 dark:border-white/5 flex items-center justify-between relative z-10">
         {/* Sorting Controls */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           <button
             onClick={(e) => { e.stopPropagation(); onMoveBackward(); }}
             disabled={isFirst}
             title="نقل لليمين"
-            className={`rounded p-1 transition ${
+            className={`min-h-[34px] min-w-[34px] flex items-center justify-center rounded-lg transition ${
               isFirst
                 ? 'text-slate-100 dark:text-slate-800 cursor-not-allowed'
-                : 'text-slate-400 hover:bg-slate-150 hover:text-slate-705 dark:hover:bg-slate-700 dark:text-slate-500 dark:hover:text-slate-300 cursor-pointer'
+                : 'text-slate-400 hover:bg-slate-150 hover:text-slate-705 dark:hover:bg-slate-700 dark:text-slate-500 dark:hover:text-slate-300 cursor-pointer active:scale-95'
             }`}
           >
             <ChevronRight className="h-4 w-4" />
           </button>
-          <span className="text-[9px] font-mono font-bold text-slate-350 dark:text-slate-650">
+          <span className="text-[10px] font-mono font-bold text-slate-350 dark:text-slate-650 px-1">
             {platform.order}
           </span>
           <button
             onClick={(e) => { e.stopPropagation(); onMoveForward(); }}
             disabled={isLast}
             title="نقل لليسار"
-            className={`rounded p-1 transition ${
+            className={`min-h-[34px] min-w-[34px] flex items-center justify-center rounded-lg transition ${
               isLast
                 ? 'text-slate-100 dark:text-slate-800 cursor-not-allowed'
-                : 'text-slate-400 hover:bg-slate-150 hover:text-slate-705 dark:hover:bg-slate-700 dark:text-slate-500 dark:hover:text-slate-300 cursor-pointer'
+                : 'text-slate-400 hover:bg-slate-150 hover:text-slate-705 dark:hover:bg-slate-700 dark:text-slate-500 dark:hover:text-slate-300 cursor-pointer active:scale-95'
             }`}
           >
             <ChevronLeft className="h-4 w-4" />
@@ -137,7 +137,7 @@ export default function PlatformCard({
           <button
             onClick={onDelete}
             title="حذف المنصة من لوحة التحكم"
-            className="rounded p-1.5 text-slate-350 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/20 dark:hover:text-rose-450 transition cursor-pointer"
+            className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl text-slate-350 hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-950/20 dark:hover:text-rose-450 transition cursor-pointer active:scale-95"
           >
             <Trash className="h-3.5 w-3.5" />
           </button>
@@ -146,7 +146,7 @@ export default function PlatformCard({
             href={platform.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-xl text-white bg-slate-900 hover:bg-black dark:bg-teal-600 dark:hover:bg-teal-500 transition shadow-sm hover:shadow cursor-pointer"
+            className="min-h-[36px] inline-flex items-center gap-1.5 text-xs font-bold px-3.5 py-1.5 rounded-xl text-white bg-slate-900 hover:bg-black dark:bg-teal-600 dark:hover:bg-teal-500 transition shadow-sm hover:shadow cursor-pointer active:scale-95"
           >
             <span>رابط</span>
             <ExternalLink className="h-3 w-3" />

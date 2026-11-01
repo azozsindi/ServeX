@@ -312,16 +312,16 @@ export default function CalendarPage() {
             {selectedMonthNameAr}
           </div>
 
-          <div className="grid grid-cols-7 gap-2.5 text-center text-xs mt-3">
+          <div className="grid grid-cols-7 gap-1 sm:gap-2.5 text-center text-xs mt-3">
             {/* Days index headers */}
             {["الأحد", "الاثنين", "الثلاثاء", "الأربعاء", "الخميس", "الجمعة", "السبت"].map(day => (
-              <span key={day} className="text-slate-400 font-black py-1">{day}</span>
+              <span key={day} className="text-slate-400 font-black py-1 text-[10px] sm:text-xs truncate">{day}</span>
             ))}
 
             {/* Grid list representing days */}
             {daysList.map((day, idx) => {
               if (day === null) {
-                return <div key={`empty-${idx}`} className="p-3" />;
+                return <div key={`empty-${idx}`} className="p-1 sm:p-3" />;
               }
               const isToday = day.toDateString() === new Date().toDateString();
               const formattedDateString = day.toLocaleDateString("ar-SA", { day: "numeric", month: "long" });
@@ -331,7 +331,7 @@ export default function CalendarPage() {
                 <div
                   key={idx}
                   onClick={() => handleCopy(`${formattedDateString} / ${formatDateToHijri(day, "ar-SA")}`, `cal-${idx}`)}
-                  className={`p-2.5 rounded-xl border flex flex-col items-center justify-between text-center relative cursor-pointer group transition duration-250 ${
+                  className={`p-1.5 sm:p-2.5 rounded-xl border flex flex-col items-center justify-between text-center relative cursor-pointer group transition duration-250 ${
                     isToday
                       ? "bg-indigo-600 text-white border-indigo-650 shadow-md font-bold text-white scale-105"
                       : "bg-slate-55/40 hover:bg-slate-100 border-slate-200/50 hover:border-slate-300 dark:bg-[#111a2f]/40 dark:border-white/5 dark:hover:bg-slate-800"
@@ -339,7 +339,7 @@ export default function CalendarPage() {
                   title="اضغط لنسخ تاريخ هذا اليوم كاملاً بالتفصيل (ميلادي/هجري)"
                 >
                   <span className="text-xs font-black font-mono leading-none">{day.getDate()}</span>
-                  <span className={`text-[9px] mt-1 font-bold ${isToday ? "text-emerald-150" : "text-emerald-500"}`}>
+                  <span className={`text-[8px] sm:text-[9px] mt-0.5 sm:mt-1 font-bold ${isToday ? "text-emerald-150" : "text-emerald-500"}`}>
                     {hijriDayOfG} هـ
                   </span>
 

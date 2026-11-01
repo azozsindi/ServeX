@@ -57,13 +57,16 @@ export default function PlatformManagerModal({ isOpen, onClose, onAddPlatform }:
   };
 
   return (
-    <div id="platform-manager-modal" className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div id="platform-manager-modal" className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
       {/* Backdrop */}
       <div className="absolute inset-0 bg-slate-950/70 backdrop-blur-md transition-opacity duration-300" onClick={onClose} />
 
       {/* Modal Container */}
-      <div className="relative w-full max-w-lg rounded-2xl bg-white/95 dark:bg-[#0d1527] backdrop-blur-lg p-6 shadow-2xl border border-slate-200/50 dark:border-white/5 max-h-[90vh] overflow-y-auto z-10 animate-fade-in text-right">
+      <div className="relative w-full max-w-lg rounded-t-3xl sm:rounded-2xl bg-white/95 dark:bg-[#0d1527] backdrop-blur-lg p-5 sm:p-6 shadow-2xl border border-slate-200/50 dark:border-white/10 max-h-[90vh] overflow-y-auto z-10 animate-fade-in text-right pb-safe">
         
+        {/* Mobile drag handle affordance */}
+        <div className="sm:hidden w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3" />
+
         {/* Header */}
         <div className="flex items-center justify-between pb-4 border-b border-slate-200/50 dark:border-white/5">
           <div className="text-right">
@@ -72,9 +75,9 @@ export default function PlatformManagerModal({ isOpen, onClose, onAddPlatform }:
           </div>
           <button
             onClick={onClose}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
           >
-            <X className="h-4 w-4" />
+            <X className="h-5 w-5" />
           </button>
         </div>
 

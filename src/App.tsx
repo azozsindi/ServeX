@@ -75,7 +75,10 @@ import {
   KeyRound,
   ShieldCheck,
   Eye,
-  EyeOff
+  EyeOff,
+  Menu,
+  X,
+  MoreHorizontal
 } from 'lucide-react';
 
 export default function App() {
@@ -220,6 +223,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'home' | 'platforms' | 'tasks' | 'calculator' | 'templates' | 'notes' | 'calendar' | 'assistant' | 'settings'>('home');
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [sidebarSearch, setSidebarSearch] = useState<string>('');
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
 
   // Platform list layout options
   const [platformSearch, setPlatformSearch] = useState('');
@@ -511,7 +515,7 @@ export default function App() {
     { id: 'notes', label: 'الملاحظات مذكراتي', icon: NotebookPen, count: notes.length, color: 'text-rose-500' },
     { id: 'templates', label: 'النصوص والرسائل الجاهزة', icon: MessageSquare, count: templates.length, color: 'text-blue-500' },
     { id: 'calendar', label: 'التقويم والتواريخ', icon: CalendarIcon, count: null, color: 'text-purple-500' },
-    { id: 'calculator', label: 'حاسبة الرسوم والأتعاب', icon: Calculator, count: null, color: 'text-teal-500' },
+    { id: 'calculator', label: 'حاسبة المصاريف والأتعاب', icon: Calculator, count: 'محدث', color: 'text-amber-500' },
     { id: 'assistant', label: 'المساعد الذكي الفوري', icon: Sparkles, count: 'AI', color: 'text-orange-500 shadow-sm' },
     { id: 'settings', label: 'إعدادات المكتب والبيانات', icon: Settings, count: null, color: 'text-slate-400' }
   ];
@@ -645,28 +649,40 @@ export default function App() {
 
       {/* HEADER BAR - Displays static time & brand info */}
       <header className="bg-white/80 dark:bg-immersive-card/90 backdrop-blur-md border-b border-slate-200/60 dark:border-white/5 transition-all sticky top-0 z-40 shrink-0">
-        <div className="mx-auto w-full px-4 sm:px-6 lg:px-8 py-3 flex items-center justify-between gap-4">
+        <div className="mx-auto w-full px-3 sm:px-6 lg:px-8 py-2.5 sm:py-3 flex items-center justify-between gap-2 sm:gap-4">
           
-          {/* Logo brand */}
-          <div className="flex items-center gap-3">
+          {/* Logo brand & Mobile menu toggle */}
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            {/* Mobile Drawer Trigger (md:hidden) */}
+            <button
+              onClick={() => setMobileDrawerOpen(true)}
+              className="md:hidden min-h-[40px] min-w-[40px] p-2 rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#152033] border border-slate-200/60 dark:border-white/10 transition active:scale-95 cursor-pointer shrink-0 flex items-center justify-center"
+              title="القائمة والأقسام"
+              aria-label="فتح القائمة الرئيسية"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+
             <div className="p-2 bg-gradient-to-tr from-teal-600 to-emerald-500 rounded-xl text-white shadow-md flex items-center justify-center shrink-0">
-              <Building2 className="h-5 w-5" />
+              <Building2 className="h-4 sm:h-5 w-4 sm:w-5" />
             </div>
-            <div>
+
+            <div className="min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <h1 className="text-base sm:text-lg font-black text-slate-800 dark:text-white tracking-tight">{officeName}</h1>
-                <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black px-2 py-0.5 rounded-full border border-emerald-500/20 whitespace-nowrap">
+                <h1 className="text-sm sm:text-lg font-black text-slate-800 dark:text-white tracking-tight truncate max-w-[170px] sm:max-w-none">
+                  {officeName}
+                </h1>
+                <span className="hidden sm:inline-block bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black px-2 py-0.5 rounded-full border border-emerald-500/20 whitespace-nowrap">
                   لوحة الموظف المؤمّنة
                 </span>
               </div>
-              <p className="text-[10px] sm:text-xs text-slate-400 font-medium">مركز قيادة متكامل وموحد لجميع المنصات الحكومية اليومية والعمليات الذكية</p>
+              <p className="hidden sm:block text-[10px] sm:text-xs text-slate-400 font-medium truncate">مركز قيادة متكامل وموحد لجميع المنصات الحكومية اليومية والعمليات الذكية</p>
             </div>
           </div>
 
           {/* Time & Theme switcher controls */}
-          <div className="flex items-center gap-3">
-            
-            {/* Realtime Saudi clock display */}
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Realtime Saudi clock display (hidden on small mobile to preserve header height) */}
             <div className="hidden sm:flex items-center gap-3 px-3 py-1 bg-slate-100/70 dark:bg-[#152033] border border-slate-200/50 dark:border-white/5 rounded-xl text-right">
               <div>
                 <span className="block text-[10px] font-bold text-slate-500 dark:text-slate-355">{arabicDate}</span>
@@ -681,7 +697,7 @@ export default function App() {
             {/* Light/Dark mode toggles */}
             <button
               onClick={() => setDarkMode(!darkMode)}
-              className="p-2 bg-slate-100 hover:bg-slate-200 text-slate-650 dark:bg-[#152033] dark:hover:bg-[#1b2a45] dark:text-slate-300 rounded-xl transition-all border border-slate-200/50 dark:border-white/5 cursor-pointer"
+              className="min-h-[40px] min-w-[40px] p-2 bg-slate-100 hover:bg-slate-200 text-slate-650 dark:bg-[#152033] dark:hover:bg-[#1b2a45] dark:text-slate-300 rounded-xl transition-all border border-slate-200/50 dark:border-white/5 cursor-pointer flex items-center justify-center"
               title={darkMode ? 'تحويل للمضيء' : 'تحويل لليلي'}
             >
               {darkMode ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4" />}
@@ -694,12 +710,12 @@ export default function App() {
       {/* BODY LAYOUT CONTAINER: Separating fixed collapsible LEFT sidebar and content RIGHT */}
       <div className="flex-1 flex flex-col md:flex-row min-h-0 relative">
         
-        {/* SIDEBAR ON THE LEFT SIDE - Fixed visual order on left of layout */}
+        {/* SIDEBAR ON THE LEFT SIDE - Visible ONLY on Desktop (hidden md:flex) */}
         <aside 
           id="main-sidebar-left"
-          className={`bg-white dark:bg-immersive-card border-r md:border-r-0 md:border-l border-slate-200/60 dark:border-white/5 transition-all duration-300 ease-in-out shrink-0 flex flex-col justify-between py-4 select-none z-30 ${
+          className={`hidden md:flex bg-white dark:bg-immersive-card border-r md:border-r-0 md:border-l border-slate-200/60 dark:border-white/5 transition-all duration-300 ease-in-out shrink-0 flex-col justify-between py-4 select-none z-30 ${
             sidebarCollapsed ? 'w-20' : 'w-72'
-          } order-first md:order-last`} // Left position mapping under RTL
+          } order-last`}
         >
           <div className="space-y-4 px-3">
             
@@ -794,8 +810,8 @@ export default function App() {
           </div>
         </aside>
 
-        {/* WORKSPACE AREA ON THE RIGHT (Main content view) */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 relative custom-scrollbar">
+        {/* WORKSPACE AREA ON THE RIGHT (Main content view with extra bottom padding for mobile bar) */}
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-6 lg:p-8 relative custom-scrollbar pb-24 md:pb-8">
           
           {/* ======================= TABS 0: DASHBOARD HOME (الرئيسية) ======================= */}
           {activeTab === 'home' && (
@@ -1001,13 +1017,13 @@ export default function App() {
                     <Search className="absolute right-3.5 top-3.5 h-4 w-4 text-slate-400 dark:text-slate-500" />
                   </div>
 
-                  {/* Filter tabs categories badges list */}
-                  <div className="flex flex-wrap gap-1.5 w-full md:w-auto justify-start md:justify-end">
+                  {/* Filter tabs categories badges list - Smooth horizontal scrolling on mobile */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar flex-nowrap md:flex-wrap w-full md:w-auto -mx-1 px-1">
                     {categoryFilterTags.map((tag) => (
                       <button
                         key={tag.value}
                         onClick={() => setSelectedCategory(tag.value)}
-                        className={`text-[11px] font-black px-3 py-1.5 rounded-xl transition whitespace-nowrap cursor-pointer ${
+                        className={`text-xs font-black px-3.5 py-2 rounded-xl transition whitespace-nowrap shrink-0 min-h-[40px] flex items-center justify-center cursor-pointer ${
                           selectedCategory === tag.value
                             ? 'bg-emerald-600 text-white shadow-sm'
                             : 'bg-slate-100 hover:bg-slate-200 text-slate-650 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-705'
@@ -1135,25 +1151,13 @@ export default function App() {
             </div>
           )}
 
-          {/* ======================= TABS 6: FEE CALCULATOR (حاسبة الرسوم الكلف) ======================= */}
+          {/* ======================= TABS 6: FEE CALCULATOR (حاسبة المصاريف والتكاليف) ======================= */}
           {activeTab === 'calculator' && (
             <div className="space-y-6 animate-fade-in text-right">
-              <FeeCalculator />
-              
-              <div className="bg-white/90 dark:bg-immersive-card rounded-2xl p-5 border border-slate-250/50 dark:border-white/5 shadow-xs">
-                <div className="flex items-start gap-3">
-                  <div className="p-2 bg-amber-500/10 text-amber-600 rounded-lg shrink-0">
-                    <HelpCircle className="h-5 w-5 animate-bounce" />
-                  </div>
-                  <div>
-                    <h3 className="text-sm font-black text-slate-850 dark:text-white">دليل فحص وسداد المكوس الحكومية بسلامة</h3>
-                    <ul className="mt-2 text-[11px] text-slate-550 dark:text-slate-350 list-disc list-inside space-y-2 leading-relaxed font-semibold">
-                      <li>يرجى من موظفي مركز المعاملات دائماً إرسال تفصيلات الفاتورة للعميل مع تنبيه بضرورة التحقق من رمز التحقق نفاذ أو الموافقة الرسمية من حسابه لإنجاز العملية بنقرة واحدة.</li>
-                      <li>لتفصيل حساب المعاملة كفاح كفيل، كفالة مساند الاستقدام، تم تخصيص مبالغ السعي كأجر خدمة ثابت للمكتب.</li>
-                    </ul>
-                  </div>
-                </div>
-              </div>
+              <FeeCalculator 
+                defaultOfficeFee={defaultCommission} 
+                officeName={officeName} 
+              />
             </div>
           )}
 
@@ -1192,11 +1196,198 @@ export default function App() {
       </div>
 
       {/* FOOTER BAR WITH SYSTEM PRIVACY LABELS */}
-      <footer className="bg-white/60 dark:bg-[#0b1322]/60 border-t border-slate-200/50 dark:border-white/5 backdrop-blur-md transition-all py-6 text-center select-none shrink-0 z-10 text-right sm:text-center px-4">
+      <footer className="bg-white/60 dark:bg-[#0b1322]/60 border-t border-slate-200/50 dark:border-white/5 backdrop-blur-md transition-all py-6 text-center select-none shrink-0 z-10 text-right sm:text-center px-4 mb-16 md:mb-0">
         <p className="text-xs text-slate-500 dark:text-slate-400">
           بوابة الخدمات العامة السعودية © {new Date().getFullYear()} — صُممت اللوحة خصيصاً لتيسير وتسريع الوصول إلى كافة روابط المعاملات ومتابعة شؤون المراجعين.
         </p>
       </footer>
+
+      {/* MOBILE NAVIGATION DRAWER (Slide-over drawer on mobile) */}
+      {mobileDrawerOpen && (
+        <div className="fixed inset-0 z-50 md:hidden flex justify-end animate-fade-in" role="dialog" aria-modal="true">
+          {/* Backdrop */}
+          <div 
+            className="fixed inset-0 bg-slate-950/70 backdrop-blur-sm transition-opacity" 
+            onClick={() => setMobileDrawerOpen(false)}
+          />
+
+          {/* Drawer Panel */}
+          <div className="relative w-[85%] max-w-xs bg-white dark:bg-[#0c1424] h-full shadow-2xl p-4 flex flex-col justify-between z-10 overflow-y-auto custom-scrollbar text-right">
+            <div className="space-y-4">
+              {/* Drawer Header */}
+              <div className="flex items-center justify-between pb-3 border-b border-slate-150 dark:border-white/10">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="p-2 bg-gradient-to-tr from-teal-600 to-emerald-500 rounded-xl text-white shadow-xs shrink-0">
+                    <Building2 className="h-4.5 w-4.5" />
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="text-xs font-black text-slate-800 dark:text-white truncate">
+                      {officeName}
+                    </h3>
+                    <span className="text-[10px] text-slate-400 font-bold block">القائمة وجميع الأقسام</span>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setMobileDrawerOpen(false)}
+                  className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-slate-600 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 transition cursor-pointer"
+                  aria-label="إغلاق القائمة"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+
+              {/* Saudi Clock in mobile drawer */}
+              <div className="p-2.5 bg-slate-50 dark:bg-[#141f33] rounded-xl border border-slate-200/50 dark:border-white/5 flex items-center justify-between text-xs font-bold">
+                <span className="text-slate-500 dark:text-slate-400 text-[11px]">{arabicDate}</span>
+                <span className="font-mono text-emerald-600 dark:text-emerald-450 font-black">{currentTime || '--:--'}</span>
+              </div>
+
+              {/* Filter sections */}
+              <div className="relative">
+                <input
+                  type="text"
+                  value={sidebarSearch}
+                  onChange={(e) => setSidebarSearch(e.target.value)}
+                  placeholder="ابحث عن أداة أو قسم..."
+                  className="w-full text-xs rounded-xl border border-slate-200 bg-slate-50/70 py-2.5 pl-2 pr-8 outline-none dark:border-white/10 dark:bg-[#131b2b] dark:text-white"
+                />
+                <Search className="absolute right-2.5 top-3 h-3.5 w-3.5 text-slate-400" />
+              </div>
+
+              {/* Nav links */}
+              <nav className="space-y-1">
+                {filteredSidebarTabs.map((tab) => {
+                  const TabIcon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => {
+                        setActiveTab(tab.id as typeof activeTab);
+                        setMobileDrawerOpen(false);
+                      }}
+                      className={`w-full flex items-center justify-between rounded-xl p-3 text-xs font-black transition cursor-pointer ${
+                        isActive
+                          ? 'bg-indigo-600 text-white shadow-sm'
+                          : 'text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-[#152033]'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <TabIcon className={`h-4.5 w-4.5 ${isActive ? 'text-white' : tab.color}`} />
+                        <span>{tab.label}</span>
+                      </div>
+                      {tab.count !== null && (
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full font-mono ${
+                          isActive ? 'bg-white/20 text-white' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+                        }`}>
+                          {tab.count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+              </nav>
+            </div>
+
+            {/* Logout button in drawer */}
+            <div className="pt-3 mt-3 border-t border-slate-150 dark:border-white/10 space-y-2">
+              <button
+                onClick={() => {
+                  if (confirm('هل أنت متأكد من رغبتك في تسجيل الخروج وقفل لوحة التحكم؟')) {
+                    localStorage.removeItem('s_azos_logged_in');
+                    setIsLoggedIn(false);
+                  }
+                }}
+                className="w-full flex items-center justify-center gap-2 rounded-xl p-3 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 text-xs font-black transition cursor-pointer"
+              >
+                <LogOut className="h-4 w-4" />
+                <span>تسجيل الخروج من النظام</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE FIXED BOTTOM NAVIGATION BAR (Ergonomic thumb navigation) */}
+      <nav 
+        id="mobile-bottom-bar"
+        className="fixed bottom-0 inset-x-0 z-40 bg-white/95 dark:bg-[#0c1424]/95 backdrop-blur-xl border-t border-slate-200/80 dark:border-white/10 pb-safe md:hidden shadow-lg transition-all"
+        aria-label="شريط التنقل السفلي"
+      >
+        <div className="grid grid-cols-5 items-center h-16 px-1">
+          {/* 1. الرئيسية */}
+          <button
+            onClick={() => setActiveTab('home')}
+            className={`flex flex-col items-center justify-center h-full gap-1 transition-colors cursor-pointer ${
+              activeTab === 'home'
+                ? 'text-indigo-600 dark:text-indigo-400 font-bold'
+                : 'text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            <Grid className={`h-5 w-5 ${activeTab === 'home' ? 'scale-110' : ''}`} />
+            <span className="text-[10px] tracking-tight">الرئيسية</span>
+          </button>
+
+          {/* 2. المنصات */}
+          <button
+            onClick={() => setActiveTab('platforms')}
+            className={`flex flex-col items-center justify-center h-full gap-1 transition-colors cursor-pointer ${
+              activeTab === 'platforms'
+                ? 'text-emerald-600 dark:text-emerald-400 font-bold'
+                : 'text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            <Layers className={`h-5 w-5 ${activeTab === 'platforms' ? 'scale-110' : ''}`} />
+            <span className="text-[10px] tracking-tight">المنصات</span>
+          </button>
+
+          {/* 3. المعاملات */}
+          <button
+            onClick={() => setActiveTab('tasks')}
+            className={`flex flex-col items-center justify-center h-full gap-1 transition-colors relative cursor-pointer ${
+              activeTab === 'tasks'
+                ? 'text-amber-600 dark:text-amber-400 font-bold'
+                : 'text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            <div className="relative">
+              <ClipboardCheck className={`h-5 w-5 ${activeTab === 'tasks' ? 'scale-110' : ''}`} />
+              {tasks.filter(t => t.status !== 'completed').length > 0 && (
+                <span className="absolute -top-1 -right-2 bg-amber-500 text-white text-[9px] font-black rounded-full h-4 w-4 flex items-center justify-center">
+                  {tasks.filter(t => t.status !== 'completed').length}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] tracking-tight">المعاملات</span>
+          </button>
+
+          {/* 4. الحاسبة */}
+          <button
+            onClick={() => setActiveTab('calculator')}
+            className={`flex flex-col items-center justify-center h-full gap-1 transition-colors cursor-pointer ${
+              activeTab === 'calculator'
+                ? 'text-teal-600 dark:text-teal-450 font-bold'
+                : 'text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            <Calculator className={`h-5 w-5 ${activeTab === 'calculator' ? 'scale-110' : ''}`} />
+            <span className="text-[10px] tracking-tight">الحاسبة</span>
+          </button>
+
+          {/* 5. المزيد / الأدوات */}
+          <button
+            onClick={() => setMobileDrawerOpen(true)}
+            className={`flex flex-col items-center justify-center h-full gap-1 transition-colors cursor-pointer ${
+              ['notes', 'templates', 'calendar', 'assistant', 'settings'].includes(activeTab)
+                ? 'text-indigo-600 dark:text-indigo-400 font-bold'
+                : 'text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+            }`}
+          >
+            <MoreHorizontal className="h-5 w-5" />
+            <span className="text-[10px] tracking-tight">المزيد</span>
+          </button>
+        </div>
+      </nav>
 
       {/* MODAL WINDOW FOR ADDING NEW LOG PORTAL */}
       <PlatformManagerModal
