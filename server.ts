@@ -16,7 +16,6 @@ import { getSaudiKnowledgeResponse } from "./src/utils/saudiKnowledge";
 
 import { processChatMessage, getGeminiClient } from "./src/server/geminiService";
 
-// API Routes
 app.get("/api/health", (req, res) => {
   const hasKey = Boolean(
     process.env.GEMINI_API_KEY || 
@@ -25,8 +24,11 @@ app.get("/api/health", (req, res) => {
   );
   res.json({ 
     status: "ok", 
+    server: "healthy",
+    service: "Saudi Public Services Command Center",
+    runtime: "express-server",
     geminiConfigured: hasKey,
-    time: new Date().toISOString() 
+    timestamp: new Date().toISOString() 
   });
 });
 

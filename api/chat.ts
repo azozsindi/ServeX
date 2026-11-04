@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { processChatMessage } from "../src/server/geminiService";
+import { processChatMessage } from "./_lib/geminiService";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   // CORS Headers
@@ -18,7 +18,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   if (req.method !== "POST") {
-    res.status(405).json({ error: "Method Not Allowed. Use POST." });
+    res.status(405).json({ error: "الطريقة غير مسموح بها. يرجى استخدام POST." });
     return;
   }
 
@@ -28,24 +28,26 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         body = JSON.parse(body);
       } catch (parseErr) {
-        // use as is or empty
+        // use raw body or empty object
       }
     }
 
     const { message, history } = body || {};
 
     if (!message || typeof message !== "string" || !message.trim()) {
-      res.status(400).json({ error: "حقل الرسالة مطلوب" });
+      res.status(400).json({ error: "حقل الرسالة مطلوب ويجب ألا يكون فارغاً" });
       return;
     }
 
     const result = await processChatMessage(message, history);
     res.status(200).json(result);
   } catch (error: any) {
-    console.error("Vercel Chat Serverless Function Error:", error);
-    // Never fail with 404 or 500; gracefully return a verified response
+    // Log safe error without exposing any internal credentials
+    console.error("Vercel Chat Serverless Function Error:", error?.message || error);
+    
+    // Always return a graceful and polite authoritative Arabic response so the user never sees 500
     res.status(200).json({
-      reply: "أهلاً بك في مكتب الخدمات العامة. حدث تأخير في الاتصال، تفضل بإعادة طرح سؤالك حول أي خدمة حكومية وسأقوم بخدمتك فوراً.",
+      reply: "أهلاً بك في مكتب الخدمات العامة. حدث تأخير بسيط في الاتصال بالشبكة، تفضل بإعادة طرح سؤالك وسأقوم بخدمتك فوراً.",
       source: "saudi-knowledge-engine"
     });
   }
