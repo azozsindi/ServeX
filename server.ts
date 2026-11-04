@@ -12,7 +12,7 @@ const PORT = 3000;
 // Middleware to parse JSON bodies
 app.use(express.json({ limit: "5mb" }));
 
-import { getSaudiKnowledgeResponse } from "./src/server/saudiKnowledge";
+import { getSaudiKnowledgeResponse } from "./src/utils/saudiKnowledge";
 
 // Initialize Gemini Client utilities safely
 let aiClient: GoogleGenAI | null = null;
