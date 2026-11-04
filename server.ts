@@ -17,17 +17,16 @@ import { getSaudiKnowledgeResponse } from "./src/utils/saudiKnowledge";
 import { processChatMessage, getGeminiClient } from "./src/server/geminiService";
 
 app.get("/api/health", (req, res) => {
-  const hasKey = Boolean(
-    process.env.GEMINI_API_KEY || 
-    process.env.GOOGLE_API_KEY || 
-    process.env.API_KEY
-  );
+  const hasGemini = Boolean(process.env.GEMINI_API_KEY && process.env.GEMINI_API_KEY.trim());
+  const hasGoogle = Boolean(process.env.GOOGLE_API_KEY && process.env.GOOGLE_API_KEY.trim());
+  const hasApi = Boolean(process.env.API_KEY && process.env.API_KEY.trim());
   res.json({ 
     status: "ok", 
     server: "healthy",
     service: "Saudi Public Services Command Center",
     runtime: "express-server",
-    geminiConfigured: hasKey,
+    geminiConfigured: hasGemini || hasGoogle || hasApi,
+    keyDetected: { hasGemini, hasGoogle, hasApi },
     timestamp: new Date().toISOString() 
   });
 });
