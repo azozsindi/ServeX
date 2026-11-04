@@ -17,11 +17,13 @@ export default function SmartAssistant() {
       try {
         const parsed = JSON.parse(saved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Clean out any stale connection error messages so user never sees connection failure alerts
+          // Clean out any stale connection error messages or 404 errors so user never sees failure alerts
           const cleaned = parsed.filter((m: ChatMessage) => 
             !m.text?.includes("حدث خطأ أثناء الاتصال") &&
             !m.text?.includes("تعذر الاتصال بالخادم") &&
             !m.text?.includes("يرجى التحقق من سعة الاتصال وخادم النظم") &&
+            !m.text?.includes("CHAT - 404") &&
+            !m.text?.includes("404") &&
             !m.id?.startsWith("msg-err-")
           );
           if (cleaned.length > 0) {
@@ -69,7 +71,8 @@ export default function SmartAssistant() {
       const validMessages = messages.filter(m => 
         !m.id?.startsWith("msg-err-") &&
         !m.text?.includes("تعذر الاتصال") &&
-        !m.text?.includes("حدث خطأ أثناء الاتصال")
+        !m.text?.includes("حدث خطأ أثناء الاتصال") &&
+        !m.text?.includes("CHAT - 404")
       );
       localStorage.setItem("s_assistant_messages", JSON.stringify(validMessages));
     } catch (e) {
@@ -99,14 +102,14 @@ export default function SmartAssistant() {
     let finalReply = "";
 
     try {
-      // Setup timeout controller so browser never hangs if server is sluggish or proxying fails
+      // Setup timeout controller (25 seconds for reliable generation across cold starts)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      const timeoutId = setTimeout(() => controller.abort(), 25000);
 
-      // Pass clean history (skip initial model greeting)
+      // Pass clean history (skip initial model greeting and error markers)
       const nonGreetingHistory = updatedMessages
         .slice(-8)
-        .filter(m => m.id !== "m-welcome" && !m.id?.startsWith("msg-err-"))
+        .filter(m => m.id !== "m-welcome" && !m.id?.startsWith("msg-err-") && !m.text?.includes("CHAT - 404"))
         .map(msg => ({
           role: msg.role,
           parts: [{ text: msg.text }]
@@ -132,10 +135,11 @@ export default function SmartAssistant() {
         if (data && data.reply && data.reply.trim()) {
           finalReply = data.reply.trim();
         }
+      } else {
+        console.warn("Backend chat returned non-OK status:", response.status);
       }
     } catch (netErr) {
-      // Network, CORS, or server not reachable in current client browser tab
-      console.info("Using local instant knowledge fallback for fast client response:", netErr);
+      console.info("Using local authoritative knowledge fallback:", netErr);
     }
 
     // If server didn't provide a reply or was unreachable, immediately provide authoritative response from knowledge engine

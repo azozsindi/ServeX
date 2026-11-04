@@ -450,6 +450,114 @@ export const INITIAL_PLATFORMS: Platform[] = [
     category: 'chamber',
     color: 'from-amber-700 to-orange-900',
     order: 50
+  },
+  {
+    id: 'masar',
+    name: 'منصة مسار',
+    url: 'https://masar.sa/',
+    description: 'المنصة الوطنية لإدارة وتطوير الموارد البشرية الحكومية، الترقيات، العلاوات، والتظلمات الوظيفية.',
+    category: 'government',
+    color: 'from-emerald-700 to-teal-800',
+    order: 51
+  },
+  {
+    id: 'ajeer',
+    name: 'منصة أجير',
+    url: 'https://ajeer.com.sa/',
+    description: 'تنظيم وتوثيق العمل المؤقت، إصدار تصاريح العمل المؤقت، وإعارة وتبادل القوى العاملة بين المنشآت.',
+    category: 'employment',
+    color: 'from-sky-500 to-indigo-600',
+    order: 52
+  },
+  {
+    id: 'jadarat',
+    name: 'منصة جدارات',
+    url: 'https://jadarat.sa/',
+    description: 'المنصة الوطنية الموحدة للتوظيف لربط الباحثين عن عمل بالفرص الوظيفية في القطاعين العام والخاص.',
+    category: 'employment',
+    color: 'from-teal-600 to-emerald-700',
+    order: 53
+  },
+  {
+    id: 'mrn',
+    name: 'منصة العمل المرن',
+    url: 'https://mrn.sa/',
+    description: 'توثيق وإدارة عقود العمل بنظام الساعات المرن وتأمين التغطية التأمينية للمواطنين في القطاع الخاص.',
+    category: 'employment',
+    color: 'from-indigo-600 to-purple-700',
+    order: 54
+  },
+  {
+    id: 'teleworks',
+    name: 'منصة العمل عن بُعد',
+    url: 'https://teleworks.sa/',
+    description: 'البوابة الوطنية المعتمدة من وزارة الموارد البشرية لتوثيق ومتابعة عقود التوظيف بنظام العمل عن بُعد.',
+    category: 'employment',
+    color: 'from-blue-600 to-cyan-700',
+    order: 55
+  },
+  {
+    id: 'monshaat',
+    name: 'الهيئة العامة للمنشآت (منشآت)',
+    url: 'https://monshaat.gov.sa/',
+    description: 'دعم وتمكين المنشآت الصغيرة والمتوسطة ورواد الأعمال، برامج التمويل، حاضنات الأعمال والاستشارات.',
+    category: 'business',
+    color: 'from-amber-600 to-orange-700',
+    order: 56
+  },
+  {
+    id: 'misa',
+    name: 'وزارة الاستثمار (MISA)',
+    url: 'https://misa.gov.sa/',
+    description: 'إصدار وتجديد تراخيص الاستثمار الأجنبي وتسهيل تأسيس الشركات والمشاريع الاستثمارية العالمية بالمملكة.',
+    category: 'business',
+    color: 'from-emerald-800 to-green-950',
+    order: 57
+  },
+  {
+    id: 'tga',
+    name: 'الهيئة العامة للنقل (TGA)',
+    url: 'https://tga.gov.sa/',
+    description: 'بوابة إصدار التراخيص وبطاقات التشغيل لوسائل النقل البري والبحري والسككي وتأهيل مزاولي الأنشطة اللوجستية.',
+    category: 'government',
+    color: 'from-blue-700 to-slate-800',
+    order: 58
+  },
+  {
+    id: 'gov-sa',
+    name: 'المنصة الوطنية الموحدة (GOV.SA)',
+    url: 'https://my.gov.sa/',
+    description: 'البوابة المركزية الموحدة للوصول إلى كافة الخدمات والمعاملات الحكومية للمواطنين والمقيمين والشركات.',
+    category: 'government',
+    color: 'from-teal-700 to-emerald-800',
+    order: 59
+  },
+  {
+    id: 'data-gov',
+    name: 'منصة البيانات المفتوحة',
+    url: 'https://data.gov.sa/',
+    description: 'البوابة الوطنية لإتاحة البيانات المفتوحة الحكومية لدعم الشفافية والبحوث وتطوير الحلول التقنية والاقتصادية.',
+    category: 'other',
+    color: 'from-cyan-700 to-blue-800',
+    order: 60
+  },
+  {
+    id: 'istitlaa',
+    name: 'منصة استطلاع',
+    url: 'https://istitlaa.ncc.gov.sa/',
+    description: 'منصة المركز الوطني للتنافسية لاستطلاع آراء العموم والقطاع الخاص حيال مشروعات الأنظمة واللوائح الحكومية.',
+    category: 'business',
+    color: 'from-indigo-700 to-violet-850',
+    order: 61
+  },
+  {
+    id: 'donations',
+    name: 'المنصة الوطنية للتبرعات',
+    url: 'https://donations.sa/',
+    description: 'المنصة الوطنية الرسمية الموثوقة لتوجيه التبرعات الخيرية والإنسانية لمستحقيها بجميع مناطق المملكة.',
+    category: 'other',
+    color: 'from-emerald-600 to-green-700',
+    order: 62
   }
 ];
 
