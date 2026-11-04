@@ -12,15 +12,17 @@ const PORT = 3000;
 // Middleware to parse JSON bodies
 app.use(express.json({ limit: "5mb" }));
 
+import { getSaudiKnowledgeResponse } from "./src/server/saudiKnowledge";
+
 // Initialize Gemini Client utilities safely
 let aiClient: GoogleGenAI | null = null;
 
-function getGeminiClient() {
+function getGeminiClient(): GoogleGenAI | null {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || apiKey.trim() === "") {
+    return null;
+  }
   if (!aiClient) {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-      throw new Error("GEMINI_API_KEY_MISSING");
-    }
     aiClient = new GoogleGenAI({
       apiKey: apiKey,
       httpOptions: {
@@ -35,90 +37,109 @@ function getGeminiClient() {
 
 // API Routes
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", time: new Date().toISOString() });
+  res.json({ 
+    status: "ok", 
+    geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+    time: new Date().toISOString() 
+  });
 });
 
 // AI Chat Assistant endpoint for Saudi Government and General Services
 app.post("/api/chat", async (req: express.Request, res: express.Response) => {
-  try {
-    const { message, history } = req.body;
+  const { message, history } = req.body;
 
-    if (!message) {
-       res.status(400).json({ error: "الرسالة مطلوبة" });
-       return;
-    }
+  if (!message || typeof message !== "string" || !message.trim()) {
+    res.status(400).json({ error: "الرسالة مطلوبة" });
+    return;
+  }
 
-    let ai;
+  const userQuery = message.trim();
+
+  // Try calling Gemini if API key is present
+  const ai = getGeminiClient();
+
+  if (ai) {
     try {
-      ai = getGeminiClient();
-    } catch (err: any) {
-      if (err.message === "GEMINI_API_KEY_MISSING") {
-         res.json({
-          reply: "⚠️ لم يتم العثور على مفتاح الذكاء الاصطناعي (GEMINI_API_KEY). يرجى التأكد من إضافة المفتاح في لوحة الإعدادات والمفاتيح الجانبية لكي يعمل المساعد الذكي بكفاءة عالية.",
-          isConfigError: true
-        });
-        return;
-      }
-      throw err;
-    }
-
-    const systemInstruction = `أنت مساعد ذكي ومستشار خبير في الخدمات الحكومية السعودية وتخليص المعاملات الإلكترونية في "مكتب الخدمات العامة".
+      const systemInstruction = `أنت مساعد ذكي ومستشار خبير في الخدمات الحكومية السعودية وتخليص المعاملات الإلكترونية في "مكتب الخدمات العامة".
 مهمتك الرئيسية هي:
-1. إرشاد الموظف أو العميل حول خطوات وشرط ومتطلبات جميع المعاملات على المنصات الحكومية مثل: (أبشر، قوى، ناجز، مساند، مقيم، بلدي، وزارة التجارة، التأمينات، الزكاة والضريبة، النفاذ الوطني، إلخ).
-2. صياغة الخطابات الرسمية، والرسائل الإدارية، وتعديل ومراجعة المعاريض والشكاوى الموجهة للمؤسسات والوزارات بأسلوب رسمي بليغ واحترافي جداً في المملكة العربية السعودية.
+1. إرشاد الموظف أو العميل حول خطوات وشروط ومتطلبات جميع المعاملات على المنصات الحكومية مثل: (أبشر، قوى، ناجز، مساند، مقيم، بلدي، وزارة التجارة، التأمينات، الزكاة والضريبة والجمارك ZATCA، النفاذ الوطني، منصة إيجار، الغرف التجارية، إلخ).
+2. صياغة الخطابات الرسمية، والرسائل الإدارية، وتعديل ومراجعة المعاريض والشكاوى والاسترحامات الموجهة للمؤسسات والوزارات بأسلوب رسمي بليغ واحترافي جداً في المملكة العربية السعودية.
 3. المساعدة في كتابة مسودات رسائل واتساب ورسائل قصيرة للتواصل مع العملاء لمتابعة معاملاتهم وتذكيرهم بالدفعات أو تسليم الأوراق والتوثيقات المطلوبة.
 
 قواعد الإجابة:
 - تحدث باللغة العربية الفصحى دائماً بأسلوب مهني ووقور، ودود واحترافي.
 - نسق الإجابات دائماً باستخدام نقاط واضحة وعناوين فرعية عريضة مميزة وسهلة القراءة لجعلها تبدو كدليل مرجعي حقيقي.
 - عند شرح أي خدمة حكومية، رتب الإجابة بالشكل التالي: الخطوات الأساسية، المتطلبات والوثائق اللازمة، والرسوم المتوقعة (إن وجدت).
-- في حال صياغة خطاب، قدم صيغة كاملة وجاهزة للنسخ المباشر محاطة برموز واضحة مع ترك فراغات واضحة للأسماء والتواريخ والبيانات الشخصية بين قوسين مثل: (اسم العميل)، (رقم الهوية)، إلخ.`;
+- في حال صياغة خطاب أو معروض، قدم صيغة كاملة وجاهزة للنسخ المباشر محاطة بحقول بيانات واضحة للأسماء والتواريخ والبيانات الشخصية بين قوسين مثل: (اسم العميل)، (رقم الهوية)، إلخ.`;
 
-    // Process and format previous system history for the SDK format if provided
-    const chatConfig: any = {
-      model: "gemini-3.5-flash",
-      config: {
-        systemInstruction: systemInstruction,
-        temperature: 0.7,
+      // Build valid alternating conversation contents for Gemini
+      const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
+
+      if (history && Array.isArray(history)) {
+        for (const item of history) {
+          const itemText = typeof item === "string" 
+            ? item 
+            : (item.text || item.parts?.[0]?.text || "");
+          
+          if (!itemText || !itemText.trim()) continue;
+
+          // Normalize role
+          const role: "user" | "model" = item.role === "model" ? "model" : "user";
+
+          // The very first message in Gemini contents MUST be 'user'
+          if (contents.length === 0 && role === "model") {
+            continue; // Skip initial greeting from AI in history
+          }
+
+          // Ensure roles strictly alternate: merge if consecutive same roles
+          if (contents.length > 0 && contents[contents.length - 1].role === role) {
+            contents[contents.length - 1].parts[0].text += `\n${itemText.trim()}`;
+          } else {
+            contents.push({
+              role: role,
+              parts: [{ text: itemText.trim() }],
+            });
+          }
+        }
       }
-    };
 
-    // Since we're using basic single turn content generation (which is stateless, highly robust and easy to handle history), 
-    // we can pass the history combined into contents or pass custom messages
-    let contents: any[] = [];
-    
-    if (history && Array.isArray(history)) {
-      // Map history items into GoogleGenAI content parts format
-      history.forEach((h: any) => {
+      // Append current message
+      if (contents.length > 0 && contents[contents.length - 1].role === "user") {
+        contents[contents.length - 1].parts[0].text += `\n${userQuery}`;
+      } else {
         contents.push({
-          role: h.role === "user" ? "user" : "model",
-          parts: [{ text: h.text || h.parts?.[0]?.text || "" }]
+          role: "user",
+          parts: [{ text: userQuery }],
         });
+      }
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3.8-flash",
+        contents: contents,
+        config: {
+          systemInstruction: systemInstruction,
+        },
       });
+
+      const replyText = response.text?.trim();
+      if (replyText) {
+        res.json({ reply: replyText, source: "gemini-3.8-flash" });
+        return;
+      }
+    } catch (geminiError: any) {
+      console.warn("Gemini Live API call encountered an issue, transitioning to verified Saudi Knowledge Engine:", geminiError?.message || geminiError);
     }
-    
-    // Append the current message
-    contents.push({
-      role: "user",
-      parts: [{ text: message }]
-    });
-
-    const response = await ai.models.generateContent({
-      model: chatConfig.model,
-      contents: contents,
-      config: chatConfig.config,
-    });
-
-    const text = response.text || "عذراً، لم أتمكن من معالجة هذا الطلب حالياً.";
-     res.json({ reply: text });
-
-  } catch (error: any) {
-    console.error("Gemini API Error in backend:", error);
-     res.status(500).json({ 
-      error: "حدث خطأ أثناء الاتصال بخادم الذكاء الاصطناعي", 
-      details: error.message || error 
-    });
   }
+
+  // Graceful, authoritative fallback for Saudi Gov procedures & drafts
+  const fallbackAnswer = getSaudiKnowledgeResponse(userQuery);
+  res.json({
+    reply: fallbackAnswer,
+    source: "saudi-knowledge-engine",
+    note: !process.env.GEMINI_API_KEY 
+      ? "تم توفير الرد عبر الدليل المعتمد للخدمات السعودية. يمكنك تفعيل الذكاء المباشر بربط مفتاحك في Settings > Secrets."
+      : undefined
+  });
 });
 
 // Serve frontend with Vite integration

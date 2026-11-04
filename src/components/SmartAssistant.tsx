@@ -13,26 +13,37 @@ export default function SmartAssistant() {
     const saved = localStorage.getItem("s_assistant_messages");
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Clean out any stale connection error messages so user doesn't stay stuck with an old error on reopen
+          const cleaned = parsed.filter((m: ChatMessage) => 
+            !m.text?.includes("حدث خطأ أثناء الاتصال بمساعد الذكاء الاصطناعي") &&
+            !m.text?.includes("يرجى التحقق من سعة الاتصال وخادم النظم") &&
+            !m.id?.startsWith("msg-err-")
+          );
+          if (cleaned.length > 0) {
+            return cleaned;
+          }
+        }
       } catch (e) {
-        console.error(e);
+        console.error("Failed to parse saved chat messages:", e);
       }
     }
-    // Return a beautiful welcoming message from the AI Saudi General Services Assistant
+    // Return welcoming message from the AI Saudi General Services Assistant
     return [
       {
         id: "m-welcome",
         role: "model",
         text: `أهلاً بك في **المساعد الذكي لمكتب الخدمات العامة**! ⚡🤖
 
-أنا دليلك ومساعدك الرقمي في كافة الإجراءات والخدمات الالكترونية الحكومية في المملكة العربية السعودية.
+أنا مستشارك ودليلك في كافة المعاملات والأنظمة واللوائح الحكومية السعودية (أبشر، قوى، ناجز، مساند، مقيم، بلدي، وزارة التجارة، الغرف التجارية، ZATCA).
 
-يمكنني تقديم المساعدة الفورية لك في:
-1. **شرح وتوضيح شروط** ومعاملات منصة (أبشر، قوى، ناجز، مساند، مقيم، بلدي، إلخ).
-2. **صياغة الخطابات الرسمية** والخطابات الإدارية بأسلوب ديواني فخم واحترافي موجه لأي جهة تفضلها.
-3. **تجهيز وتعديل رسائل واتساب ورسائل متابعة العملاء** للحفاظ على تواصل منظم وتأكيد المعاملات وسداد الرسوم.
+يمكنني إفادتك فوراً في:
+1. **شرح الشروط والرسوم الحكومية:** (تكاليف فتح سجل تجاري، رسوم نقل كفالة، رخص العمل، عقود إيجار).
+2. **صياغة الخطابات والمعاريض والاسترحامات:** صياغة ديوانية بليغة وجاهزة للطباعة والتوقيع المباشر.
+3. **تجهيز رسائل واتساب للعملاء:** لمتابعة المعاملات وطلب رموز نفاذ وتأكيد سداد الأتعاب والرسوم.
 
-*كيف يمكنني مساعدتك اليوم؟ يمكنك كتابة سؤالك مباشرة أو تجربة أحد الاقتراحات السريعة بالأسفل!* 👇`,
+*تفضل بكتابة سؤالك مباشرة، أو اختر أحد الأسئلة السريعة المقترحة بالأسفل!* 👇`,
         timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
       }
     ];
@@ -49,9 +60,14 @@ export default function SmartAssistant() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, loading]);
 
-  // Persist messages in localStorage
+  // Persist valid messages in localStorage
   useEffect(() => {
-    localStorage.setItem("s_assistant_messages", JSON.stringify(messages));
+    try {
+      const validMessages = messages.filter(m => !m.id?.startsWith("msg-err-"));
+      localStorage.setItem("s_assistant_messages", JSON.stringify(validMessages));
+    } catch (e) {
+      console.error("Failed to save chat messages:", e);
+    }
   }, [messages]);
 
   const handleSendMessage = async (textToSend?: string) => {
@@ -74,17 +90,17 @@ export default function SmartAssistant() {
     setLoading(true);
 
     try {
-      // Map history correctly for the server API - we pass the last 10 messages to keep context
-      const chatHistoryForServer = updatedMessages
-        .slice(-10) // Limit to last 10 messages for performance and tokens
+      // Pass clean history (skip initial model greeting)
+      const nonGreetingHistory = updatedMessages
+        .slice(-8)
+        .filter(m => m.id !== "m-welcome" && !m.id?.startsWith("msg-err-"))
         .map(msg => ({
           role: msg.role,
           parts: [{ text: msg.text }]
         }));
 
-      // Pull the last user message as the query
       const currentQuery = userMsg.text;
-      const historyContext = chatHistoryForServer.slice(0, -1) || [];
+      const historyContext = nonGreetingHistory.slice(0, -1) || [];
 
       const response = await fetch("/api/chat", {
         method: "POST",
@@ -95,44 +111,51 @@ export default function SmartAssistant() {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("API Failure");
+      let data;
+      try {
+        data = await response.json();
+      } catch (pErr) {
+        data = null;
       }
 
-      const data = await response.json();
+      if (!response.ok && !data?.reply) {
+        throw new Error(data?.error || "تعذر معالجة الطلب حالياً");
+      }
+
+      const replyText = data?.reply || "عذراً، لم أتمكن من استخراج الإجابة. يرجى تجربة إعادة المحاولة.";
 
       const aiMsg: ChatMessage = {
         id: `msg-${Date.now() + 1}`,
         role: "model",
-        text: data.reply || "عذراً لم أتمكن من الحصول على الإجابة.",
+        text: replyText,
         timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
       };
 
       setMessages(prev => [...prev, aiMsg]);
     } catch (err) {
-      console.error("Failed to fetch response: ", err);
-      const errorMsg: ChatMessage = {
+      console.error("Chat communication exception:", err);
+      const fallbackMsg: ChatMessage = {
         id: `msg-err-${Date.now()}`,
         role: "model",
-        text: "⚠️ حدث خطأ أثناء الاتصال بمساعد الذكاء الاصطناعي. يرجى التحقق من سعة الاتصال وخادم النظم والمفاتيح، ثم إعادة المحاولة.",
+        text: "⚡ تعذر الاتصال بالخادم مؤقتاً. يرجى التحقق من اتصال الشبكة وإعادة إرسال طلبك وسأقوم بخدمتك فوراً.",
         timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
       };
-      setMessages(prev => [...prev, errorMsg]);
+      setMessages(prev => [...prev, fallbackMsg]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleClearChat = () => {
-    if (confirm("هل تريد بالتأكيد مسح كافة الرسائل والمحادثات السابقة البدء من جديد؟")) {
+    if (confirm("هل تريد بالتأكيد مسح كافة الرسائل والمحادثات السابقة والبدء من جديد؟")) {
       localStorage.removeItem("s_assistant_messages");
       setMessages([
         {
           id: "m-welcome-reset",
           role: "model",
-          text: `تم إعادة تهيئة المساعد الذكي! بنجاح. ⚡🤖
+          text: `تم إعادة ضبط المحادثة بنجاح! ⚡🤖
 
-تفضل بطرح سؤالك حول أي معاملة في المملكة، أو اطلب صياغة خطاب وسأساعدك فوراً بفضل ذكاء Gemini الاصطناعي السحابي.`,
+تفضل بطرح سؤالك حول أي معاملة في المملكة، أو اطلب صياغة خطاب وسأساعدك فوراً.`,
           timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
         }
       ]);
@@ -147,11 +170,13 @@ export default function SmartAssistant() {
 
   // Pre-made Saudi platform prompt suggestion chips
   const suggestions = [
-    { label: "📋 خطوات قيد عقد إيجار موحد", text: "ما هي شروط ومتطلبات وخطوات توثيق وتسجيل عقد إيجار سكني أو تجاري في منصة إيجار بالكامل؟" },
-    { label: "✍️ صياغة خطاب استرحام وتظلم", text: "اكتب مسودة خطاب شكوى وتظلم رسمي في المملكة العربية السعودية موجه إلى وزارة الموارد البشرية بخصوص مخالفة رخصة عمل أو نقل خدمات منشأة بشكل متزن وبليغ." },
-    { label: "💵 رسوم رخصة عمل قوى", text: "اشرح لي قواعد حساب رسوم رخصة العمل في منصة قوى للمنشآت الكبيرة والمتوسطة والمؤسسات الصغيرة بحسب عدد العمالة السعودية." },
-    { label: "📲 مسودة واتساب لمتابعة معاملة", text: "اكتب لي قالب رسالة واتساب أنيق جداً لإرساله للعميل لمتابعته حول سداد رسوم نقل كفالة وتزويدنا برمز نفاذ أو الموافقة من حسابه في أبشر." },
-    { label: "⚖️ طلب إصدار وكالة قضائية ناجز", text: "ما هي المتطلبات والشروط اللازمة لإصدار وإعداد وكالة لشخص آخر عبر منصة ناجز العدلية دون زيارة كتابة العدل؟" }
+    { label: "🏢 خطوات ومصاريف فتح سجل تجاري", text: "ما هي شروط وخطوات وتكاليف فتح سجل تجاري جديد لمؤسسة فردية ورسوم الغرفة التجارية؟" },
+    { label: "👥 رسوم وإجراءات نقل كفالة عامل", text: "ما هي شروط ورسوم وخطوات نقل خدمات عامل عبر منصة قوى والجوازات؟" },
+    { label: "✍️ صياغة معروض استرحام رسمي", text: "اكتب مسودة خطاب استرحام وتظلم رسمي بليغ موجه لوزارة الموارد البشرية بخصوص نقل كفالة أو تأخير إقامة." },
+    { label: "💵 رسوم رخصة العمل في قوى", text: "اشرح لي قواعد حساب المقابل المالي لرخص العمل في قوى للمنشآت الكبيرة والصغيرة." },
+    { label: "🏬 متطلبات رخصة البلدية الفورية", text: "ما هي المستندات والشروط اللازمة لإصدار رخصة نشاط تجاري فورية عبر منصة بلدي؟" },
+    { label: "📲 مسودة واتساب لمتابعة العميل", text: "اكتب لي قالب رسالة واتساب أنيق لإرساله للعميل لمتابعة سداد أتعاب المعاملة وتأكيد نفاذ." },
+    { label: "📋 خطوات توثيق عقد إيجار موحد", text: "ما هي خطوات ورسوم توثيق عقد إيجار سكني أو تجاري في منصة إيجار؟" }
   ];
 
   // Helper parser to render text cleanly with bold (**text**), line breaks, and list points
@@ -195,10 +220,16 @@ export default function SmartAssistant() {
             <Sparkles className="h-5 w-5 animate-pulse" />
           </div>
           <div>
-            <h2 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-1.5 font-sans">
-              <span>المساعد الذكي للخدمات العامة (Gemini)</span>
-            </h2>
-            <p className="text-[11px] text-slate-400">مستشارك وسكرتيرك المضمون لصياغة المعاريض وفهم شروط المنصات الحكومية</p>
+            <div className="flex items-center gap-2">
+              <h2 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-1.5 font-sans">
+                <span>المساعد الذكي للخدمات العامة</span>
+              </h2>
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                نشط وجاهز
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-400">مستشارك وسكرتيرك المعتمد لصياغة المعاريض وحساب الرسوم واللوائح الحكومية</p>
           </div>
         </div>
 
