@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import { SavedTemplate } from '../types';
-import { MessageSquare, Plus, Copy, Trash, Check, Compass, Search } from 'lucide-react';
+import { MessageSquare, Plus, Copy, Trash, Check, Compass, Search, ScrollText } from 'lucide-react';
 
 interface ReadyTemplatesProps {
   templates: SavedTemplate[];
   onSaveTemplates: (templates: SavedTemplate[]) => void;
+  onNavigateToMaareed?: () => void;
 }
 
-export default function ReadyTemplates({ templates, onSaveTemplates }: ReadyTemplatesProps) {
+export default function ReadyTemplates({ templates, onSaveTemplates, onNavigateToMaareed }: ReadyTemplatesProps) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState<string>('الكل');
   
@@ -165,6 +166,24 @@ export default function ReadyTemplates({ templates, onSaveTemplates }: ReadyTemp
             </button>
           </div>
         </form>
+      )}
+
+      {/* Quick link to official petitions & istirham drafts */}
+      {onNavigateToMaareed && (
+        <div className="mb-4 p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl flex items-center justify-between gap-3 text-right">
+          <div className="flex items-center gap-2 min-w-0">
+            <ScrollText className="h-4.5 w-4.5 text-amber-600 dark:text-amber-400 shrink-0" />
+            <p className="text-xs text-amber-900 dark:text-amber-300 font-bold truncate">
+              تبحث عن صيغ استرحام رسمية، خطابات إمارة، أو معاريض ديوان ملكي؟
+            </p>
+          </div>
+          <button
+            onClick={onNavigateToMaareed}
+            className="text-xs font-black px-3 py-1 bg-amber-600 hover:bg-amber-700 text-white rounded-lg transition shrink-0 cursor-pointer shadow-2xs"
+          >
+            فتح المعاريض والاسترحامات
+          </button>
+        </div>
       )}
 
       {/* Grid Filter control & Search */}

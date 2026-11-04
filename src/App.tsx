@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Platform, Task, QuickNote, SavedTemplate } from './types';
-import { INITIAL_PLATFORMS, INITIAL_TEMPLATES } from './data/initialData';
+import { Platform, Task, QuickNote, SavedTemplate, PetitionDraft } from './types';
+import { INITIAL_PLATFORMS, INITIAL_TEMPLATES, INITIAL_PETITIONS } from './data/initialData';
 
 // Firebase core configuration & sync functions
 import {
@@ -31,6 +31,7 @@ import PlatformCard from './components/PlatformCard';
 import FeeCalculator from './components/FeeCalculator';
 import QuickNotes from './components/QuickNotes';
 import ReadyTemplates from './components/ReadyTemplates';
+import MaareedDrafts from './components/MaareedDrafts';
 import TaskTracker from './components/TaskTracker';
 import PlatformManagerModal from './components/PlatformManagerModal';
 
@@ -59,6 +60,7 @@ import {
   Layers,
   Calculator,
   MessageSquare,
+  ScrollText,
   NotebookPen,
   ClipboardCheck,
   Sparkles,
@@ -202,6 +204,27 @@ export default function App() {
     return INITIAL_TEMPLATES;
   });
 
+  // Official petitions & Istirham drafts state with auto-merge
+  const [petitions, setPetitions] = useState<PetitionDraft[]>(() => {
+    const saved = localStorage.getItem('s_dashboard_petitions');
+    if (saved) {
+      try {
+        const parsed: PetitionDraft[] = JSON.parse(saved);
+        const existingIds = new Set(parsed.map(p => p.id));
+        const missing = INITIAL_PETITIONS.filter(p => !existingIds.has(p.id));
+        if (missing.length > 0) {
+          const merged = [...parsed, ...missing];
+          localStorage.setItem('s_dashboard_petitions', JSON.stringify(merged));
+          return merged;
+        }
+        return parsed;
+      } catch (e) {
+        console.error('Error parsing petitions from localStorage', e);
+      }
+    }
+    return INITIAL_PETITIONS;
+  });
+
   const [notes, setNotes] = useState<QuickNote[]>(() => {
     const saved = localStorage.getItem('s_dashboard_notes');
     if (saved) {
@@ -231,7 +254,7 @@ export default function App() {
   });
 
   // UI Navigation / Sidebar structure
-  const [activeTab, setActiveTab] = useState<'home' | 'platforms' | 'tasks' | 'calculator' | 'templates' | 'notes' | 'calendar' | 'assistant' | 'settings'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'platforms' | 'tasks' | 'calculator' | 'templates' | 'maareed' | 'notes' | 'calendar' | 'assistant' | 'settings'>('home');
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [sidebarSearch, setSidebarSearch] = useState<string>('');
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
@@ -273,6 +296,10 @@ export default function App() {
   useEffect(() => {
     localStorage.setItem('s_dashboard_templates', JSON.stringify(templates));
   }, [templates]);
+
+  useEffect(() => {
+    localStorage.setItem('s_dashboard_petitions', JSON.stringify(petitions));
+  }, [petitions]);
 
   useEffect(() => {
     localStorage.setItem('s_dashboard_notes', JSON.stringify(notes));
@@ -365,6 +392,11 @@ export default function App() {
         deleteTemplateFromCloud(r.id).catch(err => console.error(err));
       }
     }
+  };
+
+  const handleSavePetitions = (updated: PetitionDraft[]) => {
+    setPetitions(updated);
+    localStorage.setItem('s_dashboard_petitions', JSON.stringify(updated));
   };
 
   const handleSaveTasks = (updated: Task[]) => {
@@ -476,6 +508,7 @@ export default function App() {
     localStorage.removeItem('s_dashboard_platforms');
     localStorage.removeItem('s_dashboard_tasks');
     localStorage.removeItem('s_dashboard_templates');
+    localStorage.removeItem('s_dashboard_petitions');
     localStorage.removeItem('s_dashboard_notes');
     localStorage.removeItem('s_assistant_messages');
     localStorage.removeItem('s_dashboard_office_name');
@@ -486,6 +519,7 @@ export default function App() {
     setPlatforms(INITIAL_PLATFORMS);
     setTasks([]);
     setTemplates(INITIAL_TEMPLATES);
+    setPetitions(INITIAL_PETITIONS);
     setNotes([]);
     setOfficeName('مكتب الخدمات العامة الموحد');
     setDefaultCommission(100);
@@ -524,10 +558,11 @@ export default function App() {
     { id: 'home', label: 'الرئيسية والمؤشرات', icon: Grid, count: null, color: 'text-indigo-500' },
     { id: 'platforms', label: 'المنصات والروابط', icon: Layers, count: platforms.length, color: 'text-emerald-500' },
     { id: 'tasks', label: 'المعاملات والطلبات', icon: ClipboardCheck, count: tasks.filter(t => t.status !== 'completed').length, color: 'text-amber-500' },
-    { id: 'notes', label: 'الملاحظات مذكراتي', icon: NotebookPen, count: notes.length, color: 'text-rose-500' },
+    { id: 'maareed', label: 'مسودات ومعاريض واسترحامات', icon: ScrollText, count: petitions.length, color: 'text-amber-500' },
     { id: 'templates', label: 'النصوص والرسائل الجاهزة', icon: MessageSquare, count: templates.length, color: 'text-blue-500' },
+    { id: 'calculator', label: 'حاسبة المصاريف والأتعاب', icon: Calculator, count: 'محدث', color: 'text-emerald-500' },
+    { id: 'notes', label: 'الملاحظات مذكراتي', icon: NotebookPen, count: notes.length, color: 'text-rose-500' },
     { id: 'calendar', label: 'التقويم والتواريخ', icon: CalendarIcon, count: null, color: 'text-purple-500' },
-    { id: 'calculator', label: 'حاسبة المصاريف والأتعاب', icon: Calculator, count: 'محدث', color: 'text-amber-500' },
     { id: 'assistant', label: 'المساعد الذكي الفوري', icon: Sparkles, count: 'AI', color: 'text-orange-500 shadow-sm' },
     { id: 'settings', label: 'إعدادات المكتب والبيانات', icon: Settings, count: null, color: 'text-slate-400' }
   ];
@@ -846,55 +881,70 @@ export default function App() {
               </div>
 
               {/* CORE METRIC STAT CARDS GRID */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
                 
                 {/* 1. Platforms stat */}
                 <div className="bg-white dark:bg-immersive-card p-4 rounded-2xl border border-slate-200/50 dark:border-white/5 shadow-xs transition hover:scale-102 flex flex-col justify-between h-28">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-400">المنصات المفعلة للوصول</span>
+                    <span className="text-[11px] font-bold text-slate-400">المنصات والغرف</span>
                     <Layers className="h-5 w-5 text-emerald-500" />
                   </div>
                   <div>
                     <span className="text-2xl font-black font-mono text-slate-800 dark:text-white block">{platforms.length}</span>
-                    <span className="text-[10px] text-slate-400">سجل مفتاح حكومي</span>
+                    <span className="text-[10px] text-slate-400">بوابة وغرفة تجارية</span>
                   </div>
                 </div>
 
                 {/* 2. Transactions stat */}
                 <div className="bg-white dark:bg-immersive-card p-4 rounded-2xl border border-slate-200/50 dark:border-white/5 shadow-xs transition hover:scale-102 flex flex-col justify-between h-28">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-400">المعاملات النشطة والجارية</span>
+                    <span className="text-[11px] font-bold text-slate-400">المعاملات النشطة</span>
                     <ClipboardCheck className="h-5 w-5 text-amber-500" />
                   </div>
                   <div>
                     <span className="text-2xl font-black font-mono text-slate-800 dark:text-white block">
                       {tasks.filter(t => t.status !== 'completed').length}
                     </span>
-                    <span className="text-[10px] text-slate-400">معاملة تحت التنسيق والتدقيق</span>
+                    <span className="text-[10px] text-slate-400">معاملة تحت التدقيق</span>
                   </div>
                 </div>
 
-                {/* 3. Messages templates */}
+                {/* 3. Official Petitions Drafts */}
+                <div 
+                  onClick={() => setActiveTab('maareed')}
+                  className="bg-white dark:bg-immersive-card p-4 rounded-2xl border border-slate-200/50 dark:border-white/5 shadow-xs transition hover:scale-102 flex flex-col justify-between h-28 cursor-pointer group"
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[11px] font-bold text-slate-400 group-hover:text-amber-600 transition">معاريض واسترحامات</span>
+                    <ScrollText className="h-5 w-5 text-amber-500" />
+                  </div>
+                  <div>
+                    <span className="text-2xl font-black font-mono text-slate-800 dark:text-white block">{petitions.length}</span>
+                    <span className="text-[10px] text-slate-400">مسودة رسمية جاهزة</span>
+                  </div>
+                </div>
+
+                {/* 4. Messages templates */}
                 <div className="bg-white dark:bg-immersive-card p-4 rounded-2xl border border-slate-200/50 dark:border-white/5 shadow-xs transition hover:scale-102 flex flex-col justify-between h-28">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-400">قوالب الرسائل الجاهزة</span>
+                    <span className="text-[11px] font-bold text-slate-400">قوالب العملاء</span>
                     <MessageSquare className="h-5 w-5 text-blue-500" />
                   </div>
                   <div>
                     <span className="text-2xl font-black font-mono text-slate-800 dark:text-white block">{templates.length}</span>
-                    <span className="text-[10px] text-slate-400">قالب مراسلة واتساب</span>
+                    <span className="text-[10px] text-slate-400">رسالة تواصل فورية</span>
                   </div>
                 </div>
 
-                {/* 4. Notes tracker */}
-                <div className="bg-white dark:bg-immersive-card p-4 rounded-2xl border border-slate-200/50 dark:border-white/5 shadow-xs transition hover:scale-102 flex flex-col justify-between h-28">
+                {/* 5. Notes tracker */}
+                <div className="bg-white dark:bg-immersive-card p-4 rounded-2xl border border-slate-200/50 dark:border-white/5 shadow-xs transition hover:scale-102 flex flex-col justify-between h-28 col-span-2 sm:col-span-1">
                   <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-slate-400">المذكرات المؤقتة الصوفية</span>
+                    <span className="text-[11px] font-bold text-slate-400">المذكرات السريعة</span>
                     <NotebookPen className="h-5 w-5 text-rose-500" />
                   </div>
                   <div>
                     <span className="text-2xl font-black font-mono text-slate-800 dark:text-white block">{notes.length}</span>
-                    <span className="text-[10px] text-slate-400">ملاحظة مسودة محفوظة</span>
+                    <span className="text-[10px] text-slate-400">ملاحظة مسودة</span>
                   </div>
                 </div>
 
@@ -923,14 +973,39 @@ export default function App() {
                     </button>
 
                     <button
-                      onClick={() => setActiveTab('tasks')}
+                      onClick={() => setActiveTab('maareed')}
                       className="p-3.5 rounded-xl bg-white dark:bg-immersive-card border border-slate-200/60 dark:border-white/5 hover:border-amber-500 text-right transition cursor-pointer flex items-center justify-between"
+                    >
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800 dark:text-white flex items-center gap-1.5">
+                          <span>مسودات ومعاريض واسترحامات</span>
+                          <span className="text-[9px] font-black bg-amber-500/15 text-amber-600 dark:text-amber-400 px-1.5 py-0.2 rounded-full">جديد</span>
+                        </h4>
+                        <p className="text-[10px] text-slate-400 mt-1">صيغ استرحام، عفو سجين، ديوان ملكي، وبصمة إبعاد</p>
+                      </div>
+                      <ChevronLeft className="h-4.5 w-4.5 text-amber-500" />
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab('tasks')}
+                      className="p-3.5 rounded-xl bg-white dark:bg-immersive-card border border-slate-200/60 dark:border-white/5 hover:border-blue-500 text-right transition cursor-pointer flex items-center justify-between"
                     >
                       <div>
                         <h4 className="text-xs font-black text-slate-800 dark:text-white">تسجيل ومتابعة معاملة للعميل</h4>
                         <p className="text-[10px] text-slate-400 mt-1">إضافة حالات الدفع والتنبيهات المواتية</p>
                       </div>
-                      <ChevronLeft className="h-4.5 w-4.5 text-amber-500" />
+                      <ChevronLeft className="h-4.5 w-4.5 text-blue-500" />
+                    </button>
+
+                    <button
+                      onClick={() => setActiveTab('calculator')}
+                      className="p-3.5 rounded-xl bg-white dark:bg-immersive-card border border-slate-200/60 dark:border-white/5 hover:border-emerald-500 text-right transition cursor-pointer flex items-center justify-between"
+                    >
+                      <div>
+                        <h4 className="text-xs font-black text-slate-800 dark:text-white">حاسبة الرسوم الحكومية ومصاريف المعاملات</h4>
+                        <p className="text-[10px] text-slate-400 mt-1">حساب تكلفة فتح السجل، نقل الكفالة، والإقامات</p>
+                      </div>
+                      <ChevronLeft className="h-4.5 w-4.5 text-emerald-500" />
                     </button>
 
                     <button
@@ -939,7 +1014,7 @@ export default function App() {
                     >
                       <div>
                         <h4 className="text-xs font-black text-slate-800 dark:text-white">تفعيل مستشارك الذكي</h4>
-                        <p className="text-[10px] text-slate-400 mt-1">المساعدة السحابية في صياغة المعاريض ومعرفة مكوس قوى</p>
+                        <p className="text-[10px] text-slate-400 mt-1">المساعدة في الأنظمة وتدقيق القرارات</p>
                       </div>
                       <ChevronLeft className="h-4.5 w-4.5 text-orange-500" />
                     </button>
@@ -1149,10 +1224,24 @@ export default function App() {
             </div>
           )}
 
+          {/* ======================= TABS: OFFICIAL PETITIONS & ISTIRHAM (مسودات ومعاريض واسترحامات) ======================= */}
+          {activeTab === 'maareed' && (
+            <div className="space-y-6 animate-fade-in text-right">
+              <MaareedDrafts 
+                petitions={petitions} 
+                onSavePetitions={handleSavePetitions} 
+              />
+            </div>
+          )}
+
           {/* ======================= TABS 4: MESSAGE TEMPLATES (النصوص والرسائل) ======================= */}
           {activeTab === 'templates' && (
             <div className="space-y-6 animate-fade-in text-right">
-              <ReadyTemplates templates={templates} onSaveTemplates={handleSaveTemplates} />
+              <ReadyTemplates 
+                templates={templates} 
+                onSaveTemplates={handleSaveTemplates} 
+                onNavigateToMaareed={() => setActiveTab('maareed')}
+              />
             </div>
           )}
 

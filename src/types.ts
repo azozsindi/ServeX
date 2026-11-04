@@ -51,3 +51,14 @@ export interface FeeCategory {
   name: string;
   services: ServiceFee[];
 }
+
+export interface PetitionDraft {
+  id: string;
+  title: string;
+  category: 'istirham' | 'diwan' | 'assistance' | 'passports' | 'grievance' | 'custom';
+  categoryLabel: string;
+  targetAuthority: string;
+  description: string;
+  content: string;
+  isCustom?: boolean;
+}
