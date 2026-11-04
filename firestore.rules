@@ -117,5 +117,17 @@ service cloud.firestore {
       allow read: if true; // Can read office config name publicly for display
       allow write: if isUserVerified() && settingDoc == 'config' && isValidSetting(incoming());
     }
+
+    // Quotes and Cost Sheets Collection
+    match /quotes/{quoteId} {
+      allow read: if isUserVerified();
+      allow create, update, delete: if isUserVerified() && isValidId(quoteId);
+    }
+
+    // Official Service Fees Directory
+    match /service_fees/{feeId} {
+      allow read: if true;
+      allow create, update, delete: if isUserVerified() && isValidId(feeId);
+    }
   }
 }

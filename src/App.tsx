@@ -1258,6 +1258,7 @@ export default function App() {
               <FeeCalculator 
                 defaultOfficeFee={defaultCommission} 
                 officeName={officeName} 
+                isLoggedIn={isLoggedIn}
               />
             </div>
           )}

@@ -274,6 +274,65 @@ export async function fetchSettingsFromCloud(): Promise<{ officeName: string; de
   }
 }
 
+// --- QUOTES & SERVICE FEES CLOUD PERSISTENCE ---
+
+export async function uploadQuoteToCloud(quote: any) {
+  if (!db) return;
+  try {
+    await setDoc(doc(db, 'quotes', quote.id), quote);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `quotes/${quote.id}`);
+  }
+}
+
+export async function deleteQuoteFromCloud(id: string) {
+  if (!db) return;
+  try {
+    await deleteDoc(doc(db, 'quotes', id));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `quotes/${id}`);
+  }
+}
+
+export async function fetchQuotesFromCloud(): Promise<any[]> {
+  if (!db) return [];
+  try {
+    const qSnapshot = await getDocs(collection(db, 'quotes'));
+    const list: any[] = [];
+    qSnapshot.forEach((docItem) => {
+      list.push(docItem.data());
+    });
+    return list;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.LIST, 'quotes');
+    return [];
+  }
+}
+
+export async function uploadServiceFeeToCloud(item: any) {
+  if (!db) return;
+  try {
+    await setDoc(doc(db, 'service_fees', item.id), item);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `service_fees/${item.id}`);
+  }
+}
+
+export async function fetchServiceFeesFromCloud(): Promise<any[]> {
+  if (!db) return [];
+  try {
+    const snap = await getDocs(collection(db, 'service_fees'));
+    const list: any[] = [];
+    snap.forEach((docItem) => {
+      list.push(docItem.data());
+    });
+    return list;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.LIST, 'service_fees');
+    return [];
+  }
+}
+
 export async function syncAllLocalToCloud(data: {
   platforms: Platform[];
   tasks: Task[];
@@ -307,3 +366,4 @@ export async function syncAllLocalToCloud(data: {
     await uploadTemplateToCloud(item);
   }
 }
+
