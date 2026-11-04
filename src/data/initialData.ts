@@ -216,6 +216,240 @@ export const INITIAL_PLATFORMS: Platform[] = [
     category: 'justice',
     color: 'from-sky-600 to-teal-700',
     order: 24
+  },
+  {
+    id: 'fsc',
+    name: 'اتحاد الغرف السعودية',
+    url: 'https://fsc.org.sa/',
+    description: 'المظلة الرسمية الوطنية لقطاع الأعمال والغرف التجارية، تنسيق المبادرات الاقتصادية واللجان الوطنية.',
+    category: 'chamber',
+    color: 'from-emerald-700 to-teal-850',
+    order: 25
+  },
+  {
+    id: 'fsc-attest',
+    name: 'منصة تصديق اتحاد الغرف',
+    url: 'https://attest.fsc.org.sa/',
+    description: 'البوابة الموحدة للتحقق من صحة الوثائق والمحررات المصدقة إلكترونياً من كافة الغرف التجارية السعودية.',
+    category: 'chamber',
+    color: 'from-teal-600 to-emerald-800',
+    order: 26
+  },
+  {
+    id: 'chamber-riyadh',
+    name: 'غرفة الرياض',
+    url: 'https://www.chamber.sa/',
+    description: 'خدمات مشتركي العاصمة الرياض: التصاديق الإلكترونية، الاشتراكات والانتساب، ومركز القانون وتطوير المنشآت.',
+    category: 'chamber',
+    color: 'from-amber-600 to-yellow-700',
+    order: 27
+  },
+  {
+    id: 'chamber-jeddah',
+    name: 'غرفة جدة',
+    url: 'https://www.jcci.org.sa/',
+    description: 'بوابة الخدمات الإلكترونية لمشتركي غرفة جدة، إصدار وتجديد الاشتراكات، التصديق الإلكتروني، وتسوية النزاعات التجارية.',
+    category: 'chamber',
+    color: 'from-blue-600 to-cyan-700',
+    order: 28
+  },
+  {
+    id: 'chamber-asharqia',
+    name: 'غرفة الشرقية',
+    url: 'https://www.chamber.org.sa/',
+    description: 'خدمات رجال وسيدات الأعمال بالمنطقة الشرقية: التصديق الإلكتروني، اشتراكات المنشآت، والوفود واللقاءات الاقتصادية.',
+    category: 'chamber',
+    color: 'from-emerald-600 to-teal-700',
+    order: 29
+  },
+  {
+    id: 'chamber-makkah',
+    name: 'غرفة مكة المكرمة',
+    url: 'https://makcci.org.sa/',
+    description: 'الخدمات التجارية والاشتراكات والتصاديق لقطاع الأعمال بالعاصمة المقدسة وموسم الحج والعمرة.',
+    category: 'chamber',
+    color: 'from-teal-700 to-emerald-900',
+    order: 30
+  },
+  {
+    id: 'chamber-madinah',
+    name: 'غرفة المدينة المنورة',
+    url: 'https://mcci.org.sa/',
+    description: 'بوابة المشتركين لخدمات الأعمال والتصديق الإلكتروني وتنمية الفرص الاستثمارية بمنطقة المدينة المنورة.',
+    category: 'chamber',
+    color: 'from-emerald-700 to-green-900',
+    order: 31
+  },
+  {
+    id: 'chamber-qassim',
+    name: 'غرفة القصيم',
+    url: 'https://qcci.org.sa/',
+    description: 'منظومة خدمات المشتركين بمنطقة القصيم: التصديق الإلكتروني، إصدار الشهادات، وتنمية القطاعات التجارية والزراعية.',
+    category: 'chamber',
+    color: 'from-amber-700 to-yellow-800',
+    order: 32
+  },
+  {
+    id: 'chamber-abha',
+    name: 'غرفة أبها (عسير)',
+    url: 'https://abhachamber.com.sa/',
+    description: 'خدمات التصديق الإلكتروني وتطوير الأعمال والاستثمار السياحي والصناعي بمنطقة عسير وأبها.',
+    category: 'chamber',
+    color: 'from-sky-700 to-blue-900',
+    order: 33
+  },
+  {
+    id: 'chamber-taif',
+    name: 'غرفة الطائف',
+    url: 'https://taifchamber.org.sa/',
+    description: 'منصة خدمات المشتركين لمحافظة الطائف للتصاديق الإلكترونية، استخراج الشهادات، ورعاية المستثمرين ورواد الأعمال.',
+    category: 'chamber',
+    color: 'from-rose-600 to-pink-800',
+    order: 34
+  },
+  {
+    id: 'chamber-tabuk',
+    name: 'غرفة تبوك',
+    url: 'https://tcci.org.sa/',
+    description: 'بوابة خدمات قطاع الأعمال والمستثمرين في منطقة تبوك ومشاريع الشمال الغربي والمشاريع الكبرى.',
+    category: 'chamber',
+    color: 'from-blue-700 to-indigo-800',
+    order: 35
+  },
+  {
+    id: 'chamber-jazan',
+    name: 'غرفة جازان',
+    url: 'https://jazancci.org.sa/',
+    description: 'خدمات التجار والمستثمرين بالمنطقة الجنوبية: التصاديق الرقمية، العضويات، ومتابعة المشاريع الاقتصادية بمنطقة جازان.',
+    category: 'chamber',
+    color: 'from-teal-600 to-cyan-800',
+    order: 36
+  },
+  {
+    id: 'chamber-najran',
+    name: 'غرفة نجران',
+    url: 'https://najrancci.org.sa/',
+    description: 'بوابة خدمات المشتركين الإلكترونية للتصاديق وخدمات الانتساب والتنمية الاستثمارية بمنطقة نجران.',
+    category: 'chamber',
+    color: 'from-amber-600 to-orange-800',
+    order: 37
+  },
+  {
+    id: 'chamber-hail',
+    name: 'غرفة حائل',
+    url: 'https://hailchamber.org.sa/',
+    description: 'الخدمات الرقمية للمشتركين ورجال الأعمال في حائل: التصديق الإلكتروني، اللجان التجارية، والمعارض والفعاليات.',
+    category: 'chamber',
+    color: 'from-emerald-600 to-teal-800',
+    order: 38
+  },
+  {
+    id: 'chamber-ahsa',
+    name: 'غرفة الأحساء',
+    url: 'https://ahsaccci.org.sa/',
+    description: 'بوابة خدمات المشتركين بمحافظة الأحساء، دعم رواد الأعمال، التصاديق الرقمية، والفرص الاستثمارية الواعدة.',
+    category: 'chamber',
+    color: 'from-green-700 to-emerald-900',
+    order: 39
+  },
+  {
+    id: 'chamber-jouf',
+    name: 'غرفة الجوف',
+    url: 'https://joufchamber.org.sa/',
+    description: 'خدمات رجال الأعمال والمزارعين والمستثمرين بمنطقة الجوف وتسهيل المعاملات والتصديق الفوري للمنشآت.',
+    category: 'chamber',
+    color: 'from-teal-700 to-slate-800',
+    order: 40
+  },
+  {
+    id: 'chamber-nb',
+    name: 'غرفة الحدود الشمالية',
+    url: 'https://www.nbchamber.org.sa/',
+    description: 'بوابة قطاع الأعمال في عرعر وطريف والمنطقة الشمالية للتصديق الإلكتروني وإدارة اشتراكات المنشآت.',
+    category: 'chamber',
+    color: 'from-indigo-600 to-blue-800',
+    order: 41
+  },
+  {
+    id: 'chamber-baha',
+    name: 'غرفة الباحة',
+    url: 'https://bahachamber.org.sa/',
+    description: 'خدمات التجار والمنشآت بمنطقة الباحة: التصاديق المعتمدة، استشارات الاستثمار، ودعم المنشآت الصغيرة والمتوسطة.',
+    category: 'chamber',
+    color: 'from-emerald-600 to-green-800',
+    order: 42
+  },
+  {
+    id: 'chamber-yanbu',
+    name: 'غرفة ينبع',
+    url: 'https://ycci.org.sa/',
+    description: 'خدمات قطاع التجارة والصناعة والاستثمار في ينبع الصناعية والبحرية والتصديق الإلكتروني للمنتسبين.',
+    category: 'chamber',
+    color: 'from-cyan-600 to-blue-800',
+    order: 43
+  },
+  {
+    id: 'chamber-hafr',
+    name: 'غرفة حفر الباطن',
+    url: 'https://hbcci.org.sa/',
+    description: 'بوابة المشتركين الإلكترونية بحفر الباطن: التصديق الإلكتروني وإصدار الوثائق وخدمة المنتسبين للمنظومة التجارية.',
+    category: 'chamber',
+    color: 'from-amber-600 to-teal-800',
+    order: 44
+  },
+  {
+    id: 'chamber-onaizah',
+    name: 'غرفة عنيزة',
+    url: 'https://oncci.org.sa/',
+    description: 'خدمات التجار والمستثمرين بمحافظة عنيزة، رعاية الفعاليات الاقتصادية، والتصديق الإلكتروني للوثائق والمحررات.',
+    category: 'chamber',
+    color: 'from-yellow-600 to-amber-800',
+    order: 45
+  },
+  {
+    id: 'chamber-kharj',
+    name: 'غرفة الخرج',
+    url: 'https://kcci.org.sa/',
+    description: 'خدمات قطاع الأعمال في الخرج والدلم والمحافظات المجاورة، التصديق الإلكتروني والاشتراكات السنوية للمؤسسات.',
+    category: 'chamber',
+    color: 'from-emerald-600 to-teal-800',
+    order: 46
+  },
+  {
+    id: 'chamber-majmaah',
+    name: 'غرفة المجمعة',
+    url: 'https://majmaahchamber.org.sa/',
+    description: 'خدمات المشتركين لمحافظة المجمعة والمراكز التابعة لها، التصاديق وإصدار الشهادات والتنمية الاقتصادية الواعدة.',
+    category: 'chamber',
+    color: 'from-blue-600 to-indigo-800',
+    order: 47
+  },
+  {
+    id: 'chamber-rass',
+    name: 'غرفة الرس',
+    url: 'https://rasschamber.org.sa/',
+    description: 'الخدمات الإلكترونية لمشتركي غرفة الرس، التصديق الإلكتروني، وتطوير الأنشطة التجارية والاستثمارية بالمحافظة.',
+    category: 'chamber',
+    color: 'from-teal-600 to-emerald-700',
+    order: 48
+  },
+  {
+    id: 'chamber-gurayat',
+    name: 'غرفة القريات',
+    url: 'https://gurayatchamber.org.sa/',
+    description: 'بوابة الخدمات والتصاديق الإلكترونية لرجال الأعمال والمستوردين بمحافظة القريات والمنافذ الحدودية الشمالية.',
+    category: 'chamber',
+    color: 'from-sky-600 to-teal-800',
+    order: 49
+  },
+  {
+    id: 'chamber-bisha',
+    name: 'غرفة بيشة',
+    url: 'https://bishacci.org.sa/',
+    description: 'خدمات قطاع الأعمال في محافظة بيشة، التصاديق والاشتراكات وتنمية الفرص الاستثمارية الزراعية والتجارية.',
+    category: 'chamber',
+    color: 'from-amber-700 to-orange-900',
+    order: 50
   }
 ];
 

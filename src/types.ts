@@ -3,7 +3,7 @@ export interface Platform {
   name: string;
   url: string;
   description: string;
-  category: 'government' | 'employment' | 'business' | 'justice' | 'custom' | 'other';
+  category: 'government' | 'employment' | 'business' | 'justice' | 'custom' | 'other' | 'chamber';
   color: string; // Tailwind color class or hex, e.g., 'emerald' or 'blue'
   order: number;
 }

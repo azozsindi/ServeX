@@ -29,6 +29,7 @@ export default function PlatformCard({
     employment: 'توظيف وعمل عقود',
     business: 'أعمال وتجارة وسجل',
     justice: 'قضاء وعدل ناجز',
+    chamber: 'غرفة تجارية',
     other: 'خدمات سداد وبنود',
     custom: 'يدوي مضاف',
   };
@@ -38,6 +39,7 @@ export default function PlatformCard({
     employment: 'bg-indigo-505/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20',
     business: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20',
     justice: 'bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20',
+    chamber: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/20',
     other: 'bg-rose-500/10 text-rose-600 dark:text-rose-450 border-rose-500/20',
     custom: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20',
   };

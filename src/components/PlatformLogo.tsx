@@ -19,7 +19,8 @@ import {
   CheckSquare, 
   HelpCircle,
   FileCheck2,
-  Bookmark
+  Bookmark,
+  Landmark
 } from 'lucide-react';
 
 interface PlatformLogoProps {
@@ -254,7 +255,37 @@ export default function PlatformLogo({ id, name, size = 'md' }: PlatformLogoProp
         </div>
       );
 
-    default:
+    case 'fsc':
+      return (
+        <div className={`${sizeClasses[size]} rounded-xl bg-gradient-to-br from-[#064e3b] to-[#042f2e] p-1 flex flex-col items-center justify-center text-white relative shadow-sm border border-emerald-400/30 overflow-hidden`}>
+          <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-emerald-400/15" />
+          <Landmark className="h-4.5 w-4.5 text-amber-300" />
+          <span className="text-[7.5px] font-black -mt-0.5 text-emerald-100 select-none leading-none">اتحاد الغرف</span>
+        </div>
+      );
+
+    case 'fsc-attest':
+      return (
+        <div className={`${sizeClasses[size]} rounded-xl bg-gradient-to-br from-[#0d9488] to-[#115e59] p-1 flex flex-col items-center justify-center text-white relative shadow-sm border border-teal-400/30 overflow-hidden`}>
+          <FileCheck2 className="h-4.5 w-4.5 text-amber-300" />
+          <span className="text-[7.5px] font-black -mt-0.5 text-teal-100 select-none leading-none">تصديق الغرف</span>
+        </div>
+      );
+
+    default: {
+      if (id.startsWith('chamber-')) {
+        const region = name.replace('غرفة', '').trim();
+        return (
+          <div className={`${sizeClasses[size]} rounded-xl bg-gradient-to-br from-[#064e3b] to-[#0f172a] p-1 flex flex-col items-center justify-center text-white relative shadow-xs border border-emerald-500/25 overflow-hidden`}>
+            <div className="absolute inset-0 bg-gradient-to-tr from-amber-500/10 to-transparent pointer-events-none" />
+            <Landmark className="h-4 w-4 text-amber-300 shrink-0" />
+            <span className="text-[7.5px] font-black mt-0.5 text-emerald-100 select-none truncate max-w-full px-0.5 text-center leading-none">
+              {region}
+            </span>
+          </div>
+        );
+      }
+
       // Custom added platform logic or fallback
       return (
         <div className={`${sizeClasses[size]} rounded-xl bg-gradient-to-tr ${id.includes('custom') ? 'from-purple-500 to-indigo-650' : 'from-slate-450 to-slate-650'} p-1 flex flex-col items-center justify-center text-white relative shadow-xs font-black select-none border border-white/10`}>
@@ -262,5 +293,6 @@ export default function PlatformLogo({ id, name, size = 'md' }: PlatformLogoProp
           <span className="text-sm font-black mt-2 bg-white/20 px-2 py-0.5 rounded-md min-w-[20px] text-center">{fallbackLetter}</span>
         </div>
       );
+    }
   }
 }

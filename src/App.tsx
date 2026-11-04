@@ -159,7 +159,18 @@ export default function App() {
     const saved = localStorage.getItem('s_dashboard_platforms');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Check if any default platforms (e.g. Chambers of Commerce) are missing from local state, and merge them
+          const existingIds = new Set(parsed.map((p: Platform) => p.id));
+          const missingDefaults = INITIAL_PLATFORMS.filter(p => !existingIds.has(p.id));
+          if (missingDefaults.length > 0) {
+            const merged = [...parsed, ...missingDefaults];
+            localStorage.setItem('s_dashboard_platforms', JSON.stringify(merged));
+            return merged;
+          }
+          return parsed;
+        }
       } catch (e) {
         console.error('Error parsing platforms from localStorage', e);
       }
@@ -484,6 +495,7 @@ export default function App() {
   // Category list filter
   const categoryFilterTags = [
     { label: 'الكل وقائمتي', value: 'الكل' },
+    { label: '🏛️ الغرف التجارية (جديد)', value: 'chamber' },
     { label: 'حكومية وأفراد', value: 'government' },
     { label: 'أعمال وتجارة وسجل', value: 'business' },
     { label: 'توظيف وعقود عمل', value: 'employment' },
@@ -904,8 +916,8 @@ export default function App() {
                       className="p-3.5 rounded-xl bg-white dark:bg-immersive-card border border-slate-200/60 dark:border-white/5 hover:border-emerald-500 text-right transition cursor-pointer flex items-center justify-between"
                     >
                       <div>
-                        <h4 className="text-xs font-black text-slate-800 dark:text-white">بوابة المنصات والخدمات</h4>
-                        <p className="text-[10px] text-slate-400 mt-1">تصفية ودخول 24 منصة حكومية رسمية</p>
+                        <h4 className="text-xs font-black text-slate-800 dark:text-white">بوابة المنصات والغرف التجارية</h4>
+                        <p className="text-[10px] text-slate-400 mt-1">تصفية ودخول 50 بوابة رسمية وغرفة تجارية</p>
                       </div>
                       <ChevronLeft className="h-4.5 w-4.5 text-emerald-500" />
                     </button>

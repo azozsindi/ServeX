@@ -121,9 +121,10 @@ export default function PlatformManagerModal({ isOpen, onClose, onAddPlatform }:
               onChange={(e) => setCategory(e.target.value as Platform['category'])}
               className="w-full text-xs rounded-xl border border-slate-200 bg-slate-50 p-2.5 outline-none dark:border-white/10 dark:bg-immersive-input-bg dark:text-white transition"
             >
+              <option value="chamber">غرفة تجارية (اتحاد الغرف والغرف بالمناطق)</option>
               <option value="government">رابط حكومي عام (أبشر، مقيم، إلخ)</option>
               <option value="employment">توظيف أو عمالة (قوى، مساند، إلخ)</option>
-              <option value="business">تجارة وشركات (الغرفة التجارية، الزكاة والجمارك)</option>
+              <option value="business">تجارة وشركات (السجلات، الزكاة والجمارك)</option>
               <option value="justice">قضاء ومحاكم (ناجز، بوابة العدل)</option>
               <option value="custom">يدوي مضاف مخصص</option>
               <option value="other">روابط وأدوات أخرى</option>
