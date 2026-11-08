@@ -1,4 +1,4 @@
-import { Platform, SavedTemplate, FeeCategory, PetitionDraft } from '../types';
+import { Platform, SavedTemplate, FeeCategory, PetitionDraft, UserAccount } from '../types';
 
 export const INITIAL_PLATFORMS: Platform[] = [
   {
@@ -1107,5 +1107,77 @@ export const INITIAL_PETITIONS: PetitionDraft[] = [
 المدينة: [المدينة]
 التاريخ: [التاريخ]
 التوقيع: ...........................................`
+  }
+];
+
+export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
+  {
+    id: 'usr-saad-1',
+    username: 'saad_muaqeb',
+    displayName: 'سعد العتيبي (معقب معتمد)',
+    password: 'Saad@2026_pass',
+    role: 'employee',
+    workspaceName: 'مساحة المعقب سعد - الرياض',
+    workspaceId: 'ws-saad-riyadh',
+    phone: '0551234567',
+    email: 'saad@services.sa',
+    status: 'active',
+    createdAt: '2026-01-15',
+    notes: 'مكلف بمتابعة معاملات قوى والتأمينات الاجتماعية والجوازات بالرياض',
+    permissions: {
+      canUseCalculator: true,
+      canManageTasks: true,
+      canUseAI: true,
+      canViewPlatforms: true,
+      canEditPlatforms: false,
+      canUseScratchpad: true,
+      canAccessSettings: false,
+    }
+  },
+  {
+    id: 'usr-rowad-2',
+    username: 'alrowad_co',
+    displayName: 'مجموعة الرواد للمقاولات',
+    password: 'Rowad@2026_client',
+    role: 'client',
+    workspaceName: 'مساحة عميل: مجموعة الرواد للمقاولات',
+    workspaceId: 'ws-alrowad-contracting',
+    phone: '0509876543',
+    email: 'info@alrowad-sa.com',
+    status: 'active',
+    createdAt: '2026-02-01',
+    notes: 'عميل منشأة - متابعة رخص العمل ونقل الكفالات والسجلات التجارية',
+    permissions: {
+      canUseCalculator: true,
+      canManageTasks: true,
+      canUseAI: true,
+      canViewPlatforms: true,
+      canEditPlatforms: false,
+      canUseScratchpad: true,
+      canAccessSettings: false,
+    }
+  },
+  {
+    id: 'usr-makkah-3',
+    username: 'branch_makkah',
+    displayName: 'فرع مكة المكرمة (الششة)',
+    password: 'Makkah@2026_branch',
+    role: 'branch',
+    workspaceName: 'مساحة فرع مكة المكرمة الموحدة',
+    workspaceId: 'ws-makkah-branch',
+    phone: '0125554321',
+    email: 'makkah@services.sa',
+    status: 'active',
+    createdAt: '2026-01-20',
+    notes: 'فرع العاصمة المقدسة - جميع معاملات الجوازات والبلديات ومكتب العمل بمكة',
+    permissions: {
+      canUseCalculator: true,
+      canManageTasks: true,
+      canUseAI: true,
+      canViewPlatforms: true,
+      canEditPlatforms: true,
+      canUseScratchpad: true,
+      canAccessSettings: false,
+    }
   }
 ];

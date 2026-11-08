@@ -18,6 +18,7 @@ export interface Task {
   status: 'pending' | 'processing' | 'completed' | 'canceled';
   createdAt: string;
   notes?: string;
+  workspaceId?: string;
 }
 
 export interface QuickNote {
@@ -26,6 +27,7 @@ export interface QuickNote {
   content: string;
   color: 'yellow' | 'blue' | 'green' | 'red' | 'purple' | 'gray';
   updatedAt: string;
+  workspaceId?: string;
 }
 
 export interface SavedTemplate {
@@ -110,7 +112,34 @@ export interface SavedQuote {
   status: 'draft' | 'pending_payment' | 'approved' | 'completed' | 'canceled';
   createdAt: string;
   validUntil: string;
-  responsibleEmployee: string;
   notes?: string;
+  workspaceId?: string;
+  responsibleEmployee?: string;
 }
 
+export type UserRole = 'admin' | 'employee' | 'client' | 'branch' | 'partner';
+
+export interface UserAccount {
+  id: string;
+  username: string;
+  displayName: string;
+  password: string;
+  role: UserRole;
+  workspaceName: string;
+  workspaceId: string;
+  phone?: string;
+  email?: string;
+  status: 'active' | 'suspended';
+  createdAt: string;
+  lastLoginAt?: string;
+  notes?: string;
+  permissions: {
+    canUseCalculator: boolean;
+    canManageTasks: boolean;
+    canUseAI: boolean;
+    canViewPlatforms: boolean;
+    canEditPlatforms: boolean;
+    canUseScratchpad: boolean;
+    canAccessSettings: boolean;
+  };
+}

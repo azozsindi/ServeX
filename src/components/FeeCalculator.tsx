@@ -48,6 +48,7 @@ interface FeeCalculatorProps {
   defaultOfficeFee?: number;
   officeName?: string;
   isLoggedIn?: boolean;
+  workspaceId?: string;
 }
 
 type CalculatorTab = 'commercial' | 'sponsorship' | 'iqama' | 'work_permit' | 'single' | 'custom';
@@ -55,7 +56,8 @@ type CalculatorTab = 'commercial' | 'sponsorship' | 'iqama' | 'work_permit' | 's
 export default function FeeCalculator({ 
   defaultOfficeFee = 150, 
   officeName = 'مكتب الخدمات العامة الموحد',
-  isLoggedIn = false
+  isLoggedIn = false,
+  workspaceId = 'ws-main'
 }: FeeCalculatorProps) {
   // Active Navigation Tab
   const [activeTab, setActiveTab] = useState<CalculatorTab>('commercial');
@@ -609,6 +611,7 @@ export default function FeeCalculator({
       createdAt: today,
       validUntil,
       responsibleEmployee: 'الموظف المختص',
+      workspaceId,
       notes: quoteNotes.trim()
     };
   };

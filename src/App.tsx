@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Platform, Task, QuickNote, SavedTemplate, PetitionDraft } from './types';
-import { INITIAL_PLATFORMS, INITIAL_TEMPLATES, INITIAL_PETITIONS } from './data/initialData';
+import { Platform, Task, QuickNote, SavedTemplate, PetitionDraft, UserAccount, UserRole } from './types';
+import { INITIAL_PLATFORMS, INITIAL_TEMPLATES, INITIAL_PETITIONS, INITIAL_USER_ACCOUNTS } from './data/initialData';
 
 // Firebase core configuration & sync functions
 import {
@@ -17,6 +17,9 @@ import {
   uploadTemplateToCloud,
   deleteTemplateFromCloud,
   uploadSettingsToCloud,
+  uploadUserAccountToCloud,
+  deleteUserAccountFromCloud,
+  fetchUserAccountsFromCloud,
   fetchPlatformsFromCloud,
   fetchTasksFromCloud,
   fetchQuickNotesFromCloud,
@@ -34,6 +37,7 @@ import ReadyTemplates from './components/ReadyTemplates';
 import MaareedDrafts from './components/MaareedDrafts';
 import TaskTracker from './components/TaskTracker';
 import PlatformManagerModal from './components/PlatformManagerModal';
+import { UserManagement } from './components/UserManagement';
 
 // New Modular Pages
 import SmartAssistant from './components/SmartAssistant';
@@ -43,6 +47,10 @@ import SettingsPage from './components/SettingsPage';
 // Icons
 import { 
   Building2, 
+  Users,
+  ArrowRightLeft,
+  UserCheck,
+  ShieldAlert,
   Search, 
   Plus, 
   Moon, 
@@ -122,6 +130,86 @@ export default function App() {
     return saved ? saved === 'true' : false;
   });
 
+  // --- Master Admin Account Reference ---
+  const MASTER_ADMIN_ACCOUNT: UserAccount = {
+    id: 'usr-master-admin',
+    username: 'azos',
+    displayName: 'مدير النظام العام (عبدالعزيز)',
+    password: '',
+    role: 'admin',
+    workspaceName: 'المساحة الإدارية الشاملة',
+    workspaceId: 'ws-main',
+    status: 'active',
+    createdAt: '2026-01-01',
+    phone: '0500000000',
+    notes: 'الحساب الإداري الماستر الشامل للنظام',
+    permissions: {
+      canUseCalculator: true,
+      canManageTasks: true,
+      canUseAI: true,
+      canViewPlatforms: true,
+      canEditPlatforms: true,
+      canUseScratchpad: true,
+      canAccessSettings: true
+    }
+  };
+
+  // --- Specialized User Accounts State ---
+  const [userAccounts, setUserAccounts] = useState<UserAccount[]>(() => {
+    const saved = localStorage.getItem('s_dashboard_user_accounts');
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const existingIds = new Set(parsed.map((u: UserAccount) => u.id));
+          const missingDefaults = INITIAL_USER_ACCOUNTS.filter(u => !existingIds.has(u.id));
+          if (missingDefaults.length > 0) {
+            const merged = [...parsed, ...missingDefaults];
+            localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(merged));
+            return merged;
+          }
+          return parsed;
+        }
+      } catch (e) {
+        console.error('Error parsing user accounts from localStorage', e);
+      }
+    }
+    return INITIAL_USER_ACCOUNTS;
+  });
+
+  useEffect(() => {
+    localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(userAccounts));
+  }, [userAccounts]);
+
+  // --- Active Logged-in User & Scoped Workspace ---
+  const [activeUser, setActiveUser] = useState<UserAccount | null>(() => {
+    const saved = localStorage.getItem('s_azos_active_user');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error('Error parsing active user', e);
+      }
+    }
+    if (localStorage.getItem('s_azos_logged_in') === 'true') {
+      return MASTER_ADMIN_ACCOUNT;
+    }
+    return null;
+  });
+
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState<string>(() => {
+    const savedUser = localStorage.getItem('s_azos_active_user');
+    if (savedUser) {
+      try {
+        const u = JSON.parse(savedUser);
+        if (u && u.workspaceId) return u.workspaceId;
+      } catch {}
+    }
+    return 'ws-main';
+  });
+
+  const isMasterAdmin = !activeUser || activeUser.role === 'admin' || activeUser.username === 'azos';
+
   // --- Authentication State ---
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => {
     return localStorage.getItem('s_azos_logged_in') === 'true';
@@ -135,14 +223,88 @@ export default function App() {
 
   const handleLoginSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanUser = loginUser.trim();
+    const cleanUser = loginUser.trim().toLowerCase();
+
+    // 1. Check Master Admin Credentials
     if (cleanUser === 'azos' && loginPass === 'Aa@000a000') {
       localStorage.setItem('s_azos_logged_in', 'true');
+      localStorage.setItem('s_azos_active_user', JSON.stringify(MASTER_ADMIN_ACCOUNT));
+      setActiveUser(MASTER_ADMIN_ACCOUNT);
+      setActiveWorkspaceId('ws-main');
       setIsLoggedIn(true);
       setLoginError(null);
-    } else {
-      setLoginError('خطأ في اسم المستخدم أو كلمة المرور بالخدمة. يرجى التأكد وإعادة المحاولة.');
+      return;
     }
+
+    // 2. Check Custom Specialized User Accounts
+    const matchedAccount = userAccounts.find(u => u.username.toLowerCase() === cleanUser);
+    if (matchedAccount) {
+      if (matchedAccount.status === 'suspended') {
+        setLoginError('عذراً، هذا الحساب معطّل أو موقوف حالياً من قِبل إدارة المكتب. يرجى مراجعة الإدارة.');
+        return;
+      }
+      if (matchedAccount.password === loginPass) {
+        const updatedAcc = {
+          ...matchedAccount,
+          lastLoginAt: new Date().toISOString()
+        };
+        setUserAccounts(prev => prev.map(u => u.id === matchedAccount.id ? updatedAcc : u));
+        localStorage.setItem('s_azos_logged_in', 'true');
+        localStorage.setItem('s_azos_active_user', JSON.stringify(updatedAcc));
+        setActiveUser(updatedAcc);
+        setActiveWorkspaceId(matchedAccount.workspaceId);
+        setIsLoggedIn(true);
+        setLoginError(null);
+        return;
+      }
+    }
+
+    setLoginError('خطأ في اسم المستخدم أو كلمة المرور. يرجى التأكد وإعادة المحاولة.');
+  };
+
+  const handleLogout = () => {
+    if (confirm('هل أنت متأكد من رغبتك في تسجيل الخروج وقفل لوحة التحكم؟')) {
+      localStorage.removeItem('s_azos_logged_in');
+      localStorage.removeItem('s_azos_active_user');
+      setIsLoggedIn(false);
+      setActiveUser(null);
+      setActiveWorkspaceId('ws-main');
+    }
+  };
+
+  // Handlers for User Accounts and Workspaces
+  const handleAddUserAccount = (newAcc: UserAccount) => {
+    setUserAccounts(prev => [newAcc, ...prev]);
+    if (isCloudSyncEnabled && currentUser) {
+      uploadUserAccountToCloud(newAcc).catch(err => console.error("Cloud user sync error:", err));
+    }
+  };
+
+  const handleUpdateUserAccount = (updatedAcc: UserAccount) => {
+    setUserAccounts(prev => prev.map(u => u.id === updatedAcc.id ? updatedAcc : u));
+    if (activeUser && activeUser.id === updatedAcc.id) {
+      setActiveUser(updatedAcc);
+      localStorage.setItem('s_azos_active_user', JSON.stringify(updatedAcc));
+    }
+    if (isCloudSyncEnabled && currentUser) {
+      uploadUserAccountToCloud(updatedAcc).catch(err => console.error("Cloud user sync error:", err));
+    }
+  };
+
+  const handleDeleteUserAccount = (id: string) => {
+    setUserAccounts(prev => prev.filter(u => u.id !== id));
+    if (isCloudSyncEnabled && currentUser) {
+      deleteUserAccountFromCloud(id).catch(err => console.error("Cloud user delete error:", err));
+    }
+  };
+
+  const handleSwitchToWorkspace = (account: UserAccount) => {
+    setActiveWorkspaceId(account.workspaceId);
+    setActiveTab('tasks');
+  };
+
+  const handleResetToMainWorkspace = () => {
+    setActiveWorkspaceId('ws-main');
   };
 
   // --- Office Profile Configurations ---
@@ -254,10 +416,19 @@ export default function App() {
   });
 
   // UI Navigation / Sidebar structure
-  const [activeTab, setActiveTab] = useState<'home' | 'platforms' | 'tasks' | 'calculator' | 'templates' | 'maareed' | 'notes' | 'calendar' | 'assistant' | 'settings'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'platforms' | 'tasks' | 'calculator' | 'templates' | 'maareed' | 'notes' | 'calendar' | 'assistant' | 'settings' | 'users'>('home');
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [sidebarSearch, setSidebarSearch] = useState<string>('');
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
+
+  // Scoped workspace data for tasks and notes
+  const currentWorkspaceTasks = activeWorkspaceId === 'ws-main'
+    ? tasks
+    : tasks.filter(t => !t.workspaceId || t.workspaceId === activeWorkspaceId);
+
+  const currentWorkspaceNotes = activeWorkspaceId === 'ws-main'
+    ? notes
+    : notes.filter(n => !n.workspaceId || n.workspaceId === activeWorkspaceId);
 
   // Platform list layout options
   const [platformSearch, setPlatformSearch] = useState('');
@@ -427,6 +598,34 @@ export default function App() {
     }
   };
 
+  const handleSaveScopedTasks = (updatedScopedList: Task[]) => {
+    if (activeWorkspaceId === 'ws-main') {
+      handleSaveTasks(updatedScopedList);
+    } else {
+      const stamped = updatedScopedList.map(t => ({
+        ...t,
+        workspaceId: t.workspaceId || activeWorkspaceId
+      }));
+      // Retain tasks from other workspaces
+      const otherTasks = tasks.filter(t => t.workspaceId && t.workspaceId !== activeWorkspaceId);
+      handleSaveTasks([...otherTasks, ...stamped]);
+    }
+  };
+
+  const handleSaveScopedNotes = (updatedScopedNotes: QuickNote[]) => {
+    if (activeWorkspaceId === 'ws-main') {
+      handleSaveNotes(updatedScopedNotes);
+    } else {
+      const stamped = updatedScopedNotes.map(n => ({
+        ...n,
+        workspaceId: n.workspaceId || activeWorkspaceId
+      }));
+      // Retain notes from other workspaces
+      const otherNotes = notes.filter(n => n.workspaceId && n.workspaceId !== activeWorkspaceId);
+      handleSaveNotes([...otherNotes, ...stamped]);
+    }
+  };
+
   // --- Firebase Cloud Action Trigger Helpers ---
   const handleGoogleSignIn = async () => {
     setSyncStatus("جاري تسجيل الدخول عبر Google...");
@@ -557,14 +756,15 @@ export default function App() {
   const sidebarTabs = [
     { id: 'home', label: 'الرئيسية والمؤشرات', icon: Grid, count: null, color: 'text-indigo-500' },
     { id: 'platforms', label: 'المنصات والروابط', icon: Layers, count: platforms.length, color: 'text-emerald-500' },
-    { id: 'tasks', label: 'المعاملات والطلبات', icon: ClipboardCheck, count: tasks.filter(t => t.status !== 'completed').length, color: 'text-amber-500' },
+    { id: 'tasks', label: 'المعاملات والطلبات', icon: ClipboardCheck, count: currentWorkspaceTasks.filter(t => t.status !== 'completed').length, color: 'text-amber-500' },
     { id: 'maareed', label: 'مسودات ومعاريض واسترحامات', icon: ScrollText, count: petitions.length, color: 'text-amber-500' },
     { id: 'templates', label: 'النصوص والرسائل الجاهزة', icon: MessageSquare, count: templates.length, color: 'text-blue-500' },
     { id: 'calculator', label: 'حاسبة المصاريف والأتعاب', icon: Calculator, count: 'محدث', color: 'text-emerald-500' },
-    { id: 'notes', label: 'الملاحظات مذكراتي', icon: NotebookPen, count: notes.length, color: 'text-rose-500' },
+    { id: 'notes', label: 'الملاحظات مذكراتي', icon: NotebookPen, count: currentWorkspaceNotes.length, color: 'text-rose-500' },
     { id: 'calendar', label: 'التقويم والتواريخ', icon: CalendarIcon, count: null, color: 'text-purple-500' },
     { id: 'assistant', label: 'المساعد الذكي الفوري', icon: Sparkles, count: 'AI', color: 'text-orange-500 shadow-sm' },
-    { id: 'settings', label: 'إعدادات المكتب والبيانات', icon: Settings, count: null, color: 'text-slate-400' }
+    ...(isMasterAdmin ? [{ id: 'users' as const, label: 'الحسابات والمساحات', icon: Users, count: userAccounts.length, color: 'text-indigo-500' }] : []),
+    ...(isMasterAdmin ? [{ id: 'settings' as const, label: 'إعدادات المكتب والبيانات', icon: Settings, count: null, color: 'text-slate-400' }] : [])
   ];
 
   // Live filter sidebar tabs if searched
@@ -655,15 +855,69 @@ export default function App() {
             </div>
 
             {/* Credentials Info Tip Box */}
-            <div className="p-3 bg-emerald-500/5 dark:bg-[#121b2b] rounded-xl border border-emerald-550/10 text-[11px] text-slate-500 dark:text-slate-350 leading-relaxed font-semibold text-right space-y-1">
-              <div className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
-                <KeyRound className="h-3.5 w-3.5" />
-                <span>شفرة المرور التجريبية المتوفرة:</span>
+            <div className="p-3 bg-emerald-500/5 dark:bg-[#121b2b] rounded-xl border border-emerald-550/15 text-[11px] text-slate-500 dark:text-slate-350 leading-relaxed font-semibold text-right space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
+                  <KeyRound className="h-3.5 w-3.5" />
+                  <span>بوابات الدخول والمساحات المتاحة:</span>
+                </div>
+                <span className="text-[9px] text-slate-400">اختر للتعبئة السريعة:</span>
               </div>
-              <div className="font-mono text-[10px] mt-1 space-y-0.5 opacity-90">
-                <div>اسم المستخدم: <span className="text-slate-805 dark:text-slate-100 bg-slate-200/50 dark:bg-slate-700/50 px-1 py-0.5 rounded">azos</span></div>
-                <div>كلمة المرور: <span className="text-slate-805 dark:text-slate-100 bg-slate-200/50 dark:bg-slate-700/50 px-1 py-0.5 rounded">Aa@000a000</span></div>
+
+              {/* Quick Preset Buttons */}
+              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginUser('azos');
+                    setLoginPass('Aa@000a000');
+                  }}
+                  className="p-1.5 text-right bg-white dark:bg-[#152033] hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-slate-200 dark:border-white/5 rounded-lg transition text-[10px] cursor-pointer"
+                >
+                  <div className="font-bold text-slate-800 dark:text-white">مدير النظام (كامل) 👑</div>
+                  <div className="font-mono text-[9px] text-emerald-600 dark:text-emerald-400">azos</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginUser('saad_muaqeb');
+                    setLoginPass('Saad@2026_pass');
+                  }}
+                  className="p-1.5 text-right bg-white dark:bg-[#152033] hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-slate-200 dark:border-white/5 rounded-lg transition text-[10px] cursor-pointer"
+                >
+                  <div className="font-bold text-slate-800 dark:text-white">معقب / موظف 💼</div>
+                  <div className="font-mono text-[9px] text-blue-600 dark:text-blue-400">saad_muaqeb</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginUser('alrowad_co');
+                    setLoginPass('Rowad@2026_client');
+                  }}
+                  className="p-1.5 text-right bg-white dark:bg-[#152033] hover:bg-teal-50 dark:hover:bg-teal-950/30 border border-slate-200 dark:border-white/5 rounded-lg transition text-[10px] cursor-pointer"
+                >
+                  <div className="font-bold text-slate-800 dark:text-white">عميل / منشأة 🏢</div>
+                  <div className="font-mono text-[9px] text-teal-600 dark:text-teal-400">alrowad_co</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setLoginUser('branch_makkah');
+                    setLoginPass('Makkah@2026_branch');
+                  }}
+                  className="p-1.5 text-right bg-white dark:bg-[#152033] hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-slate-200 dark:border-white/5 rounded-lg transition text-[10px] cursor-pointer"
+                >
+                  <div className="font-bold text-slate-800 dark:text-white">فرع معتمد 📍</div>
+                  <div className="font-mono text-[9px] text-amber-600 dark:text-amber-400">branch_makkah</div>
+                </button>
               </div>
+
+              <p className="text-[9.5px] text-slate-400 pt-0.5 leading-tight">
+                * يدعم النظام أي حساب مخصص ينشئه المدير من قسم "الحسابات والمساحات" بمساحة عمل مستقلة تماماً.
+              </p>
             </div>
 
             {/* Login button */}
@@ -741,6 +995,21 @@ export default function App() {
               </div>
             </div>
 
+            {/* Active User Badge & Logout in Header */}
+            {activeUser && (
+              <div className="hidden lg:flex items-center gap-2 px-2.5 py-1 bg-slate-100/80 dark:bg-[#152033] border border-slate-200/60 dark:border-white/5 rounded-xl text-right">
+                <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                <div className="text-right leading-tight max-w-[130px] truncate">
+                  <span className="block text-[11px] font-black text-slate-800 dark:text-white truncate">
+                    {activeUser.displayName}
+                  </span>
+                  <span className="block text-[9px] text-indigo-600 dark:text-indigo-400 font-bold">
+                    {activeUser.role === 'admin' ? 'مدير عام 👑' : activeUser.role === 'employee' ? 'معقب / موظف 💼' : activeUser.role === 'client' ? 'عميل منشأة 🏢' : activeUser.role === 'branch' ? 'فرع معتمد 📍' : 'شريك 🤝'}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Light/Dark mode toggles */}
             <button
               onClick={() => setDarkMode(!darkMode)}
@@ -749,10 +1018,51 @@ export default function App() {
             >
               {darkMode ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4" />}
             </button>
+
+            {/* Quick Logout button in header */}
+            <button
+              onClick={handleLogout}
+              className="min-h-[40px] min-w-[40px] p-2 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:hover:bg-rose-900/50 dark:text-rose-400 rounded-xl transition-all border border-rose-200/50 dark:border-rose-900/40 cursor-pointer flex items-center justify-center"
+              title="تسجيل الخروج وقفل اللوحة"
+            >
+              <LogOut className="h-4 w-4" />
+            </button>
           </div>
 
         </div>
       </header>
+
+      {/* ACTIVE WORKSPACE SCOPE BANNER (Shown when viewing a specialized workspace) */}
+      {activeWorkspaceId !== 'ws-main' && (
+        <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 text-white border-b border-indigo-500/30 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-3 shadow-md z-30 shrink-0">
+          <div className="flex items-center gap-2 text-xs min-w-0">
+            <span className="p-1 bg-indigo-500/30 rounded-lg text-indigo-300 shrink-0">
+              <ArrowRightLeft className="h-4 w-4" />
+            </span>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-slate-300 text-[11px]">أنت الآن داخل مساحة العمل:</span>
+              <span className="font-black text-amber-300 bg-amber-500/10 border border-amber-400/30 px-2 py-0.5 rounded-md text-xs">
+                {userAccounts.find(u => u.workspaceId === activeWorkspaceId)?.workspaceName || activeWorkspaceId}
+              </span>
+              {isMasterAdmin && (
+                <span className="text-[10px] bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded-full font-bold">
+                  معاينة إدارية مباشرة
+                </span>
+              )}
+            </div>
+          </div>
+
+          {isMasterAdmin && (
+            <button
+              onClick={handleResetToMainWorkspace}
+              className="text-[11px] font-black bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl transition shadow-sm flex items-center gap-1 cursor-pointer shrink-0"
+            >
+              <span>العودة للمساحة الرئيسية</span>
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+      )}
 
       {/* BODY LAYOUT CONTAINER: Separating fixed collapsible LEFT sidebar and content RIGHT */}
       <div className="flex-1 flex flex-col md:flex-row min-h-0 relative">
@@ -832,12 +1142,7 @@ export default function App() {
           {/* Secure Logout trigger */}
           <div className="px-3 pt-1">
             <button
-              onClick={() => {
-                if (confirm('هل أنت متأكد من رغبتك في تسجيل الخروج وقفل لوحة التحكم؟')) {
-                  localStorage.removeItem('s_azos_logged_in');
-                  setIsLoggedIn(false);
-                }
-              }}
+              onClick={handleLogout}
               className="w-full flex items-center justify-center gap-2 rounded-xl p-2 bg-rose-50 hover:bg-rose-105 text-rose-600 dark:bg-rose-955/20 dark:hover:bg-rose-900/40 dark:text-rose-400 text-xs font-black transition cursor-pointer"
               title="تسجيل الخروج من النظام"
             >
@@ -1213,14 +1518,29 @@ export default function App() {
           {/* ======================= TABS 2: TRANSACTIONS (المعاملات والطلبات) ======================= */}
           {activeTab === 'tasks' && (
             <div className="space-y-6 animate-fade-in text-right">
-              <TaskTracker tasks={tasks} platforms={platforms} onSaveTasks={handleSaveTasks} />
+              <TaskTracker tasks={currentWorkspaceTasks} platforms={platforms} onSaveTasks={handleSaveScopedTasks} />
             </div>
           )}
 
           {/* ======================= TABS 3: STICKY NOTES (الملاحظات) ======================= */}
           {activeTab === 'notes' && (
             <div className="space-y-6 animate-fade-in text-right">
-              <QuickNotes notes={notes} onSaveNotes={handleSaveNotes} />
+              <QuickNotes notes={currentWorkspaceNotes} onSaveNotes={handleSaveScopedNotes} />
+            </div>
+          )}
+
+          {/* ======================= TABS 9: USER ACCOUNTS & WORKSPACES (الحسابات والمساحات) ======================= */}
+          {activeTab === 'users' && isMasterAdmin && (
+            <div className="space-y-6 animate-fade-in text-right">
+              <UserManagement
+                accounts={userAccounts}
+                onAddAccount={handleAddUserAccount}
+                onUpdateAccount={handleUpdateUserAccount}
+                onDeleteAccount={handleDeleteUserAccount}
+                onSwitchToWorkspace={handleSwitchToWorkspace}
+                currentActiveWorkspaceId={activeWorkspaceId}
+                isLoggedIn={isLoggedIn}
+              />
             </div>
           )}
 
@@ -1259,6 +1579,7 @@ export default function App() {
                 defaultOfficeFee={defaultCommission} 
                 officeName={officeName} 
                 isLoggedIn={isLoggedIn}
+                workspaceId={activeWorkspaceId}
               />
             </div>
           )}
@@ -1394,12 +1715,7 @@ export default function App() {
             {/* Logout button in drawer */}
             <div className="pt-3 mt-3 border-t border-slate-150 dark:border-white/10 space-y-2">
               <button
-                onClick={() => {
-                  if (confirm('هل أنت متأكد من رغبتك في تسجيل الخروج وقفل لوحة التحكم؟')) {
-                    localStorage.removeItem('s_azos_logged_in');
-                    setIsLoggedIn(false);
-                  }
-                }}
+                onClick={handleLogout}
                 className="w-full flex items-center justify-center gap-2 rounded-xl p-3 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400 text-xs font-black transition cursor-pointer"
               >
                 <LogOut className="h-4 w-4" />

@@ -333,6 +333,39 @@ export async function fetchServiceFeesFromCloud(): Promise<any[]> {
   }
 }
 
+export async function uploadUserAccountToCloud(item: any) {
+  if (!db) return;
+  try {
+    await setDoc(doc(db, 'user_accounts', item.id), item);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `user_accounts/${item.id}`);
+  }
+}
+
+export async function deleteUserAccountFromCloud(id: string) {
+  if (!db) return;
+  try {
+    await deleteDoc(doc(db, 'user_accounts', id));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `user_accounts/${id}`);
+  }
+}
+
+export async function fetchUserAccountsFromCloud(): Promise<any[]> {
+  if (!db) return [];
+  try {
+    const snap = await getDocs(collection(db, 'user_accounts'));
+    const list: any[] = [];
+    snap.forEach((docItem) => {
+      list.push(docItem.data());
+    });
+    return list;
+  } catch (err) {
+    handleFirestoreError(err, OperationType.LIST, 'user_accounts');
+    return [];
+  }
+}
+
 export async function syncAllLocalToCloud(data: {
   platforms: Platform[];
   tasks: Task[];
@@ -366,4 +399,5 @@ export async function syncAllLocalToCloud(data: {
     await uploadTemplateToCloud(item);
   }
 }
+
 
