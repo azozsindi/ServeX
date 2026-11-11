@@ -66,6 +66,23 @@
         "defaultCommission": { "type": "number" }
       },
       "required": ["officeName", "defaultCommission"]
+    },
+    "UserAccount": {
+      "title": "UserAccount",
+      "description": "Employee user accounts for office portal access",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "username": { "type": "string" },
+        "displayName": { "type": "string" },
+        "password": { "type": "string" },
+        "role": { "type": "string" },
+        "workspaceName": { "type": "string" },
+        "workspaceId": { "type": "string" },
+        "status": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "username", "displayName", "password"]
     }
   },
   "firestore": {
@@ -88,6 +105,10 @@
     "/settings/config": {
       "schema": "Setting",
       "description": "Central metadata and general settings for the office"
+    },
+    "/user_accounts/{accountId}": {
+      "schema": "UserAccount",
+      "description": "Office staff user accounts and credentials"
     }
   }
 }

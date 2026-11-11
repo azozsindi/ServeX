@@ -132,8 +132,7 @@ service cloud.firestore {
 
     // Specialized User Accounts & Dedicated Workspaces
     match /user_accounts/{accountId} {
-      allow read: if true;
-      allow create, update, delete: if isUserVerified() && isValidId(accountId);
+      allow read, write: if true;
     }
   }
 }

@@ -1,6 +1,6 @@
 import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut } from 'firebase/auth';
-import { getFirestore, doc, getDocFromServer, collection, setDoc, getDocs, deleteDoc } from 'firebase/firestore';
+import { getFirestore, doc, getDocFromServer, collection, setDoc, getDocs, deleteDoc, onSnapshot } from 'firebase/firestore';
 import { Platform, Task, SavedTemplate, QuickNote } from './types';
 
 // Import provisioned config statically from workspace root
@@ -363,6 +363,21 @@ export async function fetchUserAccountsFromCloud(): Promise<any[]> {
   } catch (err) {
     handleFirestoreError(err, OperationType.LIST, 'user_accounts');
     return [];
+  }
+}
+
+export function subscribeToUserAccounts(callback: (accounts: any[]) => void) {
+  if (!db) return () => {};
+  try {
+    return onSnapshot(collection(db, 'user_accounts'), (snap) => {
+      const list: any[] = [];
+      snap.forEach(d => list.push(d.data()));
+      callback(list);
+    }, (err) => {
+      console.warn("User accounts realtime listener note:", err?.message || err);
+    });
+  } catch {
+    return () => {};
   }
 }
 

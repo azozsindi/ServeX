@@ -20,6 +20,7 @@ import {
   uploadUserAccountToCloud,
   deleteUserAccountFromCloud,
   fetchUserAccountsFromCloud,
+  subscribeToUserAccounts,
   fetchPlatformsFromCloud,
   fetchTasksFromCloud,
   fetchQuickNotesFromCloud,
@@ -176,19 +177,56 @@ export default function App() {
     localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(userAccounts));
   }, [userAccounts]);
 
-  // Fetch centralized accounts from server on mount
+  // Arabic & text normalization helper for flexible login matching
+  const normalizeAuthText = (text: string): string => {
+    if (!text) return '';
+    return text
+      .trim()
+      .toLowerCase()
+      .replace(/[أإآ]/g, 'ا')
+      .replace(/ة/g, 'ه')
+      .replace(/ى/g, 'ي')
+      .replace(/[\s\-_]+/g, '');
+  };
+
+  // Real-time synchronization of accounts from Firestore and server API on mount
   useEffect(() => {
+    // 1. Listen in real-time to Firestore user_accounts (works across all devices & URLs)
+    const unsubscribeFirestore = subscribeToUserAccounts((cloudList) => {
+      if (Array.isArray(cloudList) && cloudList.length > 0) {
+        setUserAccounts(prev => {
+          const map = new Map<string, UserAccount>();
+          INITIAL_USER_ACCOUNTS.forEach(a => map.set(a.id, a));
+          prev.forEach(a => map.set(a.id, a));
+          cloudList.forEach(a => map.set(a.id, a as UserAccount));
+          const merged = Array.from(map.values());
+          localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(merged));
+          return merged;
+        });
+      }
+    });
+
+    // 2. Query server-side accounts backup
     fetch('/api/accounts')
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data) && data.length > 0) {
-          setUserAccounts(data);
-          localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(data));
+          setUserAccounts(prev => {
+            const map = new Map<string, UserAccount>();
+            INITIAL_USER_ACCOUNTS.forEach(a => map.set(a.id, a));
+            prev.forEach(a => map.set(a.id, a));
+            data.forEach((a: UserAccount) => map.set(a.id, a));
+            const merged = Array.from(map.values());
+            localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(merged));
+            return merged;
+          });
         }
       })
-      .catch(() => {
-        // Fallback to local accounts
-      });
+      .catch(() => {});
+
+    return () => {
+      if (typeof unsubscribeFirestore === 'function') unsubscribeFirestore();
+    };
   }, []);
 
   // --- Active Logged-in User & Scoped Workspace ---
@@ -233,11 +271,12 @@ export default function App() {
 
   const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const cleanUser = loginUser.trim().toLowerCase();
+    const cleanUser = loginUser.trim();
     const cleanPass = loginPass.trim();
+    const normalizedInput = normalizeAuthText(cleanUser);
 
-    // 1. Check Master Admin Credentials
-    if (cleanUser === 'azos' && cleanPass === 'Aa@000a000') {
+    // 1. Check Master Admin Credentials (Exact matching)
+    if (cleanUser.toLowerCase() === 'azos' && cleanPass === 'Aa@000a000') {
       localStorage.setItem('s_azos_logged_in', 'true');
       localStorage.setItem('s_azos_active_user', JSON.stringify(MASTER_ADMIN_ACCOUNT));
       setActiveUser(MASTER_ADMIN_ACCOUNT);
@@ -247,24 +286,48 @@ export default function App() {
       return;
     }
 
-    // 2. Check current state and query server for latest cross-device accounts
-    let currentAccounts = userAccounts;
+    // 2. Ensure latest accounts are fetched from Firestore and Server
+    let currentAccounts = [...userAccounts];
     try {
-      const res = await fetch('/api/accounts');
-      if (res.ok) {
-        const fresh = await res.json();
-        if (Array.isArray(fresh) && fresh.length > 0) {
-          currentAccounts = fresh;
-          setUserAccounts(fresh);
-          localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(fresh));
-        }
+      const [cloudAccounts, serverRes] = await Promise.allSettled([
+        fetchUserAccountsFromCloud(),
+        fetch('/api/accounts').then(r => r.json())
+      ]);
+
+      const map = new Map<string, UserAccount>();
+      INITIAL_USER_ACCOUNTS.forEach(a => map.set(a.id, a));
+      currentAccounts.forEach(a => map.set(a.id, a));
+
+      if (cloudAccounts.status === 'fulfilled' && Array.isArray(cloudAccounts.value)) {
+        cloudAccounts.value.forEach(a => map.set(a.id, a as UserAccount));
       }
+      if (serverRes.status === 'fulfilled' && Array.isArray(serverRes.value)) {
+        serverRes.value.forEach((a: UserAccount) => map.set(a.id, a));
+      }
+
+      currentAccounts = Array.from(map.values());
+      setUserAccounts(currentAccounts);
+      localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(currentAccounts));
     } catch {
       // Offline fallback
     }
 
-    // Check Custom Specialized User Accounts
-    const matchedAccount = currentAccounts.find(u => u.username.trim().toLowerCase() === cleanUser);
+    // 3. Multi-field matching: by username (emp_838), display name (عبد الملك), normalized name (عبدالملك), or phone
+    const matchedAccount = currentAccounts.find(u => {
+      const uUser = (u.username || '').trim().toLowerCase();
+      const uName = (u.displayName || '').trim().toLowerCase();
+      const uPhone = (u.phone || '').trim();
+      const normUUser = normalizeAuthText(u.username);
+      const normUName = normalizeAuthText(u.displayName);
+
+      return (
+        uUser === cleanUser.toLowerCase() ||
+        uName === cleanUser.toLowerCase() ||
+        (uPhone && uPhone === cleanUser) ||
+        (normalizedInput && (normUUser === normalizedInput || normUName === normalizedInput))
+      );
+    });
+
     if (matchedAccount) {
       if (matchedAccount.status === 'suspended') {
         setLoginError('عذراً، هذا الحساب معطّل أو موقوف حالياً من قِبل إدارة المكتب. يرجى مراجعة الإدارة.');
@@ -279,7 +342,7 @@ export default function App() {
         localStorage.setItem('s_azos_logged_in', 'true');
         localStorage.setItem('s_azos_active_user', JSON.stringify(updatedAcc));
         setActiveUser(updatedAcc);
-        setActiveWorkspaceId(matchedAccount.workspaceId);
+        setActiveWorkspaceId(matchedAccount.workspaceId || 'ws-main');
         setIsLoggedIn(true);
         setLoginError(null);
         return;
@@ -300,19 +363,20 @@ export default function App() {
   // Handlers for User Accounts and Workspaces
   const handleAddUserAccount = (newAcc: UserAccount) => {
     setUserAccounts(prev => {
-      const updated = [newAcc, ...prev];
+      const updated = [newAcc, ...prev.filter(a => a.id !== newAcc.id)];
       localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(updated));
       return updated;
     });
+
+    // 1. Sync to server API
     fetch('/api/accounts', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(newAcc)
     }).catch(err => console.error("Server user sync error:", err));
 
-    if (isCloudSyncEnabled && currentUser) {
-      uploadUserAccountToCloud(newAcc).catch(err => console.error("Cloud user sync error:", err));
-    }
+    // 2. Sync to Firestore unconditionally so all remote devices and URLs have it immediately
+    uploadUserAccountToCloud(newAcc).catch(err => console.error("Firestore user upload error:", err));
   };
 
   const handleUpdateUserAccount = (updatedAcc: UserAccount) => {
@@ -331,9 +395,7 @@ export default function App() {
       body: JSON.stringify(updatedAcc)
     }).catch(err => console.error("Server user update error:", err));
 
-    if (isCloudSyncEnabled && currentUser) {
-      uploadUserAccountToCloud(updatedAcc).catch(err => console.error("Cloud user sync error:", err));
-    }
+    uploadUserAccountToCloud(updatedAcc).catch(err => console.error("Firestore user update error:", err));
   };
 
   const handleDeleteUserAccount = (id: string) => {
@@ -346,9 +408,7 @@ export default function App() {
       method: 'DELETE'
     }).catch(err => console.error("Server user delete error:", err));
 
-    if (isCloudSyncEnabled && currentUser) {
-      deleteUserAccountFromCloud(id).catch(err => console.error("Cloud user delete error:", err));
-    }
+    deleteUserAccountFromCloud(id).catch(err => console.error("Firestore user delete error:", err));
   };
 
   const handleSwitchToWorkspace = (account: UserAccount) => {
