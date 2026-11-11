@@ -157,29 +157,39 @@ export default function App() {
   // --- Specialized User Accounts State ---
   const [userAccounts, setUserAccounts] = useState<UserAccount[]>(() => {
     const saved = localStorage.getItem('s_dashboard_user_accounts');
-    if (saved) {
+    if (saved !== null) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          const existingIds = new Set(parsed.map((u: UserAccount) => u.id));
-          const missingDefaults = INITIAL_USER_ACCOUNTS.filter(u => !existingIds.has(u.id));
-          if (missingDefaults.length > 0) {
-            const merged = [...parsed, ...missingDefaults];
-            localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(merged));
-            return merged;
-          }
+        if (Array.isArray(parsed)) {
           return parsed;
         }
       } catch (e) {
         console.error('Error parsing user accounts from localStorage', e);
       }
     }
+    // Only load initial defaults on very first launch
+    localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(INITIAL_USER_ACCOUNTS));
     return INITIAL_USER_ACCOUNTS;
   });
 
   useEffect(() => {
     localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(userAccounts));
   }, [userAccounts]);
+
+  // Fetch centralized accounts from server on mount
+  useEffect(() => {
+    fetch('/api/accounts')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setUserAccounts(data);
+          localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(data));
+        }
+      })
+      .catch(() => {
+        // Fallback to local accounts
+      });
+  }, []);
 
   // --- Active Logged-in User & Scoped Workspace ---
   const [activeUser, setActiveUser] = useState<UserAccount | null>(() => {
@@ -221,12 +231,13 @@ export default function App() {
   const [showPassword, setShowPassword] = useState<boolean>(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const cleanUser = loginUser.trim().toLowerCase();
+    const cleanPass = loginPass.trim();
 
     // 1. Check Master Admin Credentials
-    if (cleanUser === 'azos' && loginPass === 'Aa@000a000') {
+    if (cleanUser === 'azos' && cleanPass === 'Aa@000a000') {
       localStorage.setItem('s_azos_logged_in', 'true');
       localStorage.setItem('s_azos_active_user', JSON.stringify(MASTER_ADMIN_ACCOUNT));
       setActiveUser(MASTER_ADMIN_ACCOUNT);
@@ -236,14 +247,30 @@ export default function App() {
       return;
     }
 
-    // 2. Check Custom Specialized User Accounts
-    const matchedAccount = userAccounts.find(u => u.username.toLowerCase() === cleanUser);
+    // 2. Check current state and query server for latest cross-device accounts
+    let currentAccounts = userAccounts;
+    try {
+      const res = await fetch('/api/accounts');
+      if (res.ok) {
+        const fresh = await res.json();
+        if (Array.isArray(fresh) && fresh.length > 0) {
+          currentAccounts = fresh;
+          setUserAccounts(fresh);
+          localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(fresh));
+        }
+      }
+    } catch {
+      // Offline fallback
+    }
+
+    // Check Custom Specialized User Accounts
+    const matchedAccount = currentAccounts.find(u => u.username.trim().toLowerCase() === cleanUser);
     if (matchedAccount) {
       if (matchedAccount.status === 'suspended') {
         setLoginError('عذراً، هذا الحساب معطّل أو موقوف حالياً من قِبل إدارة المكتب. يرجى مراجعة الإدارة.');
         return;
       }
-      if (matchedAccount.password === loginPass) {
+      if (matchedAccount.password.trim() === cleanPass) {
         const updatedAcc = {
           ...matchedAccount,
           lastLoginAt: new Date().toISOString()
@@ -263,36 +290,62 @@ export default function App() {
   };
 
   const handleLogout = () => {
-    if (confirm('هل أنت متأكد من رغبتك في تسجيل الخروج وقفل لوحة التحكم؟')) {
-      localStorage.removeItem('s_azos_logged_in');
-      localStorage.removeItem('s_azos_active_user');
-      setIsLoggedIn(false);
-      setActiveUser(null);
-      setActiveWorkspaceId('ws-main');
-    }
+    localStorage.removeItem('s_azos_logged_in');
+    localStorage.removeItem('s_azos_active_user');
+    setIsLoggedIn(false);
+    setActiveUser(null);
+    setActiveWorkspaceId('ws-main');
   };
 
   // Handlers for User Accounts and Workspaces
   const handleAddUserAccount = (newAcc: UserAccount) => {
-    setUserAccounts(prev => [newAcc, ...prev]);
+    setUserAccounts(prev => {
+      const updated = [newAcc, ...prev];
+      localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(updated));
+      return updated;
+    });
+    fetch('/api/accounts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(newAcc)
+    }).catch(err => console.error("Server user sync error:", err));
+
     if (isCloudSyncEnabled && currentUser) {
       uploadUserAccountToCloud(newAcc).catch(err => console.error("Cloud user sync error:", err));
     }
   };
 
   const handleUpdateUserAccount = (updatedAcc: UserAccount) => {
-    setUserAccounts(prev => prev.map(u => u.id === updatedAcc.id ? updatedAcc : u));
+    setUserAccounts(prev => {
+      const updated = prev.map(u => u.id === updatedAcc.id ? updatedAcc : u);
+      localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(updated));
+      return updated;
+    });
     if (activeUser && activeUser.id === updatedAcc.id) {
       setActiveUser(updatedAcc);
       localStorage.setItem('s_azos_active_user', JSON.stringify(updatedAcc));
     }
+    fetch('/api/accounts', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedAcc)
+    }).catch(err => console.error("Server user update error:", err));
+
     if (isCloudSyncEnabled && currentUser) {
       uploadUserAccountToCloud(updatedAcc).catch(err => console.error("Cloud user sync error:", err));
     }
   };
 
   const handleDeleteUserAccount = (id: string) => {
-    setUserAccounts(prev => prev.filter(u => u.id !== id));
+    setUserAccounts(prev => {
+      const updated = prev.filter(u => u.id !== id);
+      localStorage.setItem('s_dashboard_user_accounts', JSON.stringify(updated));
+      return updated;
+    });
+    fetch(`/api/accounts/${id}`, {
+      method: 'DELETE'
+    }).catch(err => console.error("Server user delete error:", err));
+
     if (isCloudSyncEnabled && currentUser) {
       deleteUserAccountFromCloud(id).catch(err => console.error("Cloud user delete error:", err));
     }

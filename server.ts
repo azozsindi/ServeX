@@ -44,6 +44,85 @@ app.post("/api/chat", async (req: express.Request, res: express.Response) => {
   res.json(result);
 });
 
+import fs from "fs";
+const ACCOUNTS_FILE = path.join(process.cwd(), "user_accounts_store.json");
+
+function getStoredAccounts() {
+  if (fs.existsSync(ACCOUNTS_FILE)) {
+    try {
+      const content = fs.readFileSync(ACCOUNTS_FILE, "utf-8");
+      const parsed = JSON.parse(content);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    } catch (e) {
+      console.error("Error reading ACCOUNTS_FILE", e);
+    }
+  }
+  return [
+    {
+      id: "usr-abdulmalik-838",
+      username: "emp_838",
+      displayName: "عبد الملك",
+      password: "rs$BMjpy",
+      role: "employee",
+      workspaceName: "مساحة عبد الملك",
+      workspaceId: "ws-emp-838",
+      status: "active",
+      createdAt: "١٢/١١/٢٠٢٦",
+      notes: "موظف معتمد في المكتب",
+      storagePolicy: "local_only",
+      permissions: {
+        canUseCalculator: true,
+        canManageTasks: true,
+        canUseAI: true,
+        canViewPlatforms: true,
+        canEditPlatforms: false,
+        canUseScratchpad: true,
+        canAccessSettings: false
+      }
+    }
+  ];
+}
+
+function saveStoredAccounts(accounts: any[]) {
+  try {
+    fs.writeFileSync(ACCOUNTS_FILE, JSON.stringify(accounts, null, 2), "utf-8");
+  } catch (e) {
+    console.error("Error writing ACCOUNTS_FILE", e);
+  }
+}
+
+// User Accounts CRUD endpoints for cross-device authentication
+app.get("/api/accounts", (_req: express.Request, res: express.Response) => {
+  res.json(getStoredAccounts());
+});
+
+app.post("/api/accounts", (req: express.Request, res: express.Response) => {
+  const account = req.body;
+  if (!account || !account.username || !account.password) {
+    res.status(400).json({ error: "Missing required account fields" });
+    return;
+  }
+  const accounts = getStoredAccounts();
+  const existingIdx = accounts.findIndex(
+    (a: any) => a.id === account.id || a.username.toLowerCase() === account.username.toLowerCase()
+  );
+  if (existingIdx >= 0) {
+    accounts[existingIdx] = { ...accounts[existingIdx], ...account };
+  } else {
+    accounts.unshift(account);
+  }
+  saveStoredAccounts(accounts);
+  res.json({ success: true, account });
+});
+
+app.delete("/api/accounts/:id", (req: express.Request, res: express.Response) => {
+  const { id } = req.params;
+  const accounts = getStoredAccounts();
+  const filtered = accounts.filter((a: any) => a.id !== id && a.username !== id);
+  saveStoredAccounts(filtered);
+  res.json({ success: true, deletedId: id });
+});
+
 // Serve frontend with Vite integration
 async function setupVite() {
   if (process.env.NODE_ENV !== "production") {
