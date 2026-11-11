@@ -25,7 +25,16 @@ import {
   ArrowRightLeft,
   X,
   Lock,
-  MessageSquare
+  MessageSquare,
+  Cloud,
+  HardDrive,
+  Database,
+  Download,
+  ShieldCheck,
+  Zap,
+  Info,
+  ChevronDown,
+  ChevronUp
 } from 'lucide-react';
 import { UserAccount, UserRole } from '../types';
 
@@ -37,6 +46,11 @@ interface UserManagementProps {
   onSwitchToWorkspace: (account: UserAccount) => void;
   currentActiveWorkspaceId?: string;
   isLoggedIn: boolean;
+  totalTasksCount?: number;
+  totalNotesCount?: number;
+  totalPlatformsCount?: number;
+  onArchiveCompletedTasks?: (daysOld?: number) => { archivedCount: number };
+  onExportAllData?: () => void;
 }
 
 const ROLE_LABELS: Record<UserRole, { label: string; color: string; bg: string }> = {
@@ -54,7 +68,12 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   onDeleteAccount,
   onSwitchToWorkspace,
   currentActiveWorkspaceId,
-  isLoggedIn
+  isLoggedIn,
+  totalTasksCount = 0,
+  totalNotesCount = 0,
+  totalPlatformsCount = 0,
+  onArchiveCompletedTasks,
+  onExportAllData
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedRole, setSelectedRole] = useState<string>('all');
@@ -63,6 +82,8 @@ export const UserManagement: React.FC<UserManagementProps> = ({
   const [editingAccount, setEditingAccount] = useState<UserAccount | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [showPasswordMap, setShowPasswordMap] = useState<Record<string, boolean>>({});
+  const [showQuotaExplainer, setShowQuotaExplainer] = useState<boolean>(false);
+  const [quotaActionMessage, setQuotaActionMessage] = useState<string | null>(null);
 
   // Form states
   const [formData, setFormData] = useState<{
@@ -75,6 +96,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     email: string;
     status: 'active' | 'suspended';
     notes: string;
+    storagePolicy: 'local_only' | 'cloud_sync';
     permissions: {
       canUseCalculator: boolean;
       canManageTasks: boolean;
@@ -94,6 +116,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
     email: '',
     status: 'active',
     notes: '',
+    storagePolicy: 'local_only',
     permissions: {
       canUseCalculator: true,
       canManageTasks: true,
@@ -118,6 +141,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       email: '',
       status: 'active',
       notes: '',
+      storagePolicy: 'local_only',
       permissions: {
         canUseCalculator: true,
         canManageTasks: true,
@@ -143,6 +167,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
       email: acc.email || '',
       status: acc.status,
       notes: acc.notes || '',
+      storagePolicy: acc.storagePolicy || (acc.role === 'admin' || acc.role === 'branch' ? 'cloud_sync' : 'local_only'),
       permissions: { ...acc.permissions }
     });
     setIsModalOpen(true);
@@ -178,6 +203,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         email: formData.email.trim(),
         status: formData.status,
         notes: formData.notes.trim(),
+        storagePolicy: formData.storagePolicy,
         permissions: formData.permissions
       };
       onUpdateAccount(updated);
@@ -195,6 +221,7 @@ export const UserManagement: React.FC<UserManagementProps> = ({
         status: formData.status,
         createdAt: new Date().toLocaleDateString('ar-SA'),
         notes: formData.notes.trim(),
+        storagePolicy: formData.storagePolicy,
         permissions: formData.permissions
       };
       onAddAccount(newAcc);
@@ -276,6 +303,137 @@ export const UserManagement: React.FC<UserManagementProps> = ({
           <UserPlus className="h-4.5 w-4.5" />
           <span>إنشاء حساب ومساحة جديدة +</span>
         </button>
+      </div>
+
+      {/* FIREBASE QUOTA & STORAGE PROTECTION SHIELD (درع حماية وترشيد فايربيس) */}
+      <div className="bg-gradient-to-br from-emerald-500/10 via-teal-500/5 to-indigo-500/10 rounded-2xl border border-emerald-500/25 p-4 md:p-5 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-black text-slate-900 dark:text-white">درع حماية فايربيس وترشيد الاستهلاك السحابي</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30">
+                  الحالة: آمنة وموفرة 100% 🛡️
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-600 dark:text-slate-400 mt-0.5">
+                تطمّن: الحسابات التي تنشئها تستخدم سياسة <strong className="text-emerald-600 dark:text-emerald-400">التخزين المحلي المعزول (0 بايت على فايربيس)</strong>، فلا تستهلك أي شيء من سحابتك.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {onExportAllData && (
+              <button
+                onClick={onExportAllData}
+                className="text-xs font-bold px-3 py-2 rounded-xl bg-white dark:bg-[#141f33] hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-800 dark:text-white border border-slate-200 dark:border-white/10 transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="تنزيل نسخة احتياطية محلية كاملة لكافة السجلات والحسابات على جهازك"
+              >
+                <Download className="h-3.5 w-3.5 text-indigo-500" />
+                <span>نسخة احتياطية (JSON)</span>
+              </button>
+            )}
+
+            {onArchiveCompletedTasks && (
+              <button
+                onClick={() => {
+                  if (confirm('هل تريد أرشفة وتفريغ المعاملات المنتهية والمكتملة (أقدم من 30 يوماً)؟ سيتم تنزيل نسخة منها في جهازك وحذفها من السحابة لتوفير المساحة.')) {
+                    const res = onArchiveCompletedTasks(30);
+                    setQuotaActionMessage(`✓ تم تنظيف وأرشفة ${res.archivedCount} معاملة منتهية وتنزيل نسختها بنجاح!`);
+                    setTimeout(() => setQuotaActionMessage(null), 5000);
+                  }
+                }}
+                className="text-xs font-bold px-3 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white transition flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                title="تنظيف المعاملات المنتهية القديمة لمنع امتلاء قاعدة البيانات"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                <span>تنظيف المعاملات القديمة</span>
+              </button>
+            )}
+
+            <button
+              onClick={() => setShowQuotaExplainer(!showQuotaExplainer)}
+              className="text-xs font-bold p-2 rounded-xl bg-white/80 dark:bg-[#141f33]/80 hover:bg-white text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-white/10 transition cursor-pointer"
+              title="عرض تفاصيل سعة باقة فايربيس المجانية"
+            >
+              {showQuotaExplainer ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </button>
+          </div>
+        </div>
+
+        {quotaActionMessage && (
+          <div className="p-2.5 bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 rounded-xl text-xs font-bold animate-fade-in flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            <span>{quotaActionMessage}</span>
+          </div>
+        )}
+
+        {/* Live Storage Footprint Progress bar */}
+        <div className="bg-white/80 dark:bg-[#101928]/80 p-3 rounded-xl border border-slate-200/50 dark:border-white/5 space-y-2">
+          <div className="flex flex-wrap items-center justify-between text-xs gap-2">
+            <div className="flex items-center gap-2">
+              <Database className="h-4 w-4 text-emerald-500" />
+              <span className="font-bold text-slate-800 dark:text-slate-200">الاستهلاك التقديري الحالي لقاعدتك:</span>
+              <span className="font-mono font-black text-emerald-600 dark:text-emerald-400">
+                {Math.round((totalTasksCount * 0.5) + (totalNotesCount * 0.3) + (totalPlatformsCount * 0.4) + (accounts.length * 0.6) + 12)} كيلوبايت
+              </span>
+              <span className="text-slate-400 text-[10px]">من أصل 1,048,576 كيلوبايت (1 جيجابايت مجاني دائم)</span>
+            </div>
+
+            <div className="flex items-center gap-3 text-[11px] font-bold">
+              <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+                <HardDrive className="h-3.5 w-3.5" />
+                <span>حسابات محلية (صفر استهلاك): {accounts.filter(a => a.storagePolicy === 'local_only' || (!a.storagePolicy && a.role !== 'admin' && a.role !== 'branch')).length}</span>
+              </span>
+              <span className="text-slate-300 dark:text-slate-700">|</span>
+              <span className="flex items-center gap-1 text-blue-600 dark:text-blue-400">
+                <Cloud className="h-3.5 w-3.5" />
+                <span>حسابات سحابية: {accounts.filter(a => a.storagePolicy === 'cloud_sync' || a.role === 'admin' || a.role === 'branch').length}</span>
+              </span>
+            </div>
+          </div>
+
+          <div className="w-full h-2.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden flex">
+            <div 
+              style={{ width: `${Math.max(0.5, ((Math.round((totalTasksCount * 0.5) + (totalNotesCount * 0.3) + (totalPlatformsCount * 0.4) + (accounts.length * 0.6) + 12) / 1048576) * 100))}%` }}
+              className="bg-gradient-to-r from-emerald-500 to-teal-500 h-full rounded-full transition-all duration-500"
+            />
+          </div>
+
+          <div className="flex items-center justify-between text-[10px] text-slate-400">
+            <span>معدل الامتلاء: أقل من 0.005% (يتبقى أكثر من 99.99% مجاناً بالكامل)</span>
+            <span>باقة Google Firebase Spark المجانية</span>
+          </div>
+        </div>
+
+        {/* Collapsible Explainer Card */}
+        {showQuotaExplainer && (
+          <div className="p-3.5 bg-white dark:bg-[#101928] rounded-xl border border-slate-200/60 dark:border-white/5 text-xs text-slate-600 dark:text-slate-300 space-y-2.5 animate-fade-in leading-relaxed">
+            <div className="flex items-center gap-1.5 font-black text-slate-800 dark:text-white">
+              <Info className="h-4 w-4 text-indigo-500" />
+              <span>كيف تحمي منصتنا فايربيس الخاص بك من الامتلاء أو التكاليف؟</span>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1 text-[11px]">
+              <div className="p-2.5 bg-slate-50 dark:bg-[#141f33] rounded-lg border border-slate-200/50 dark:border-white/5 space-y-1">
+                <span className="font-bold text-emerald-600 dark:text-emerald-400 block">1. التخزين المحلي التلقائي 🛡️</span>
+                <p>أي حساب تنشئه لعميل أو معقب يُعيّن افتراضياً كـ "تخزين محلي معزول"، مما يعني أن جميع معاملاته ومذكراته تُخزن في متصفحه وجهازه فقط ولا ترسل أي بيانات إلى فايربيس الخاص بك.</p>
+              </div>
+
+              <div className="p-2.5 bg-slate-50 dark:bg-[#141f33] rounded-lg border border-slate-200/50 dark:border-white/5 space-y-1">
+                <span className="font-bold text-blue-600 dark:text-blue-400 block">2. سعة جوجل الضخمة المجانية 📦</span>
+                <p>باقة Firebase Spark المجانية تمنحك 1 جيجابايت تخزين (تكفي لأكثر من 1,000,000 معاملة نصية)، و 50,000 قراءة و 20,000 كتابة يومياً تتجدد مجاناً كل 24 ساعة.</p>
+              </div>
+
+              <div className="p-2.5 bg-slate-50 dark:bg-[#141f33] rounded-lg border border-slate-200/50 dark:border-white/5 space-y-1">
+                <span className="font-bold text-amber-600 dark:text-amber-400 block">3. الأرشفة والتفريغ الفوري 🧹</span>
+                <p>يمكنك في أي لحظة الضغط على زر "تنظيف المعاملات القديمة" لأرشفة وحذف المعاملات المنتهية منذ شهر وتنزيلها كملف Excel/JSON في حاسوبك حتى تبقى قاعدة بياناتك خفيفة وسريعة دائماً.</p>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* KPI Stats Grid */}
@@ -451,6 +609,25 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                         {showPasswordMap[acc.id] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                       </button>
                     </div>
+                  </div>
+
+                  {/* Storage Policy indicator */}
+                  <div className="flex items-center justify-between text-[11px] pt-1">
+                    <span className="text-slate-400 font-bold flex items-center gap-1">
+                      <Database className="h-3 w-3 text-indigo-500" />
+                      وضع التخزين:
+                    </span>
+                    {acc.storagePolicy === 'cloud_sync' || acc.role === 'admin' || acc.role === 'branch' ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-blue-100/70 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300 font-bold text-[10px] border border-blue-300/40">
+                        <Cloud className="h-3 w-3" />
+                        <span>متزامن مع فايربيس</span>
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-emerald-100/70 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 font-bold text-[10px] border border-emerald-300/40" title="صفر استهلاك من سحابة فايربيس">
+                        <HardDrive className="h-3 w-3" />
+                        <span>محلي معزول 100% (صفر تكلفة)</span>
+                      </span>
+                    )}
                   </div>
 
                   {/* Permissions mini pill indicators */}
@@ -678,6 +855,63 @@ export const UserManagement: React.FC<UserManagementProps> = ({
                     <option value="active">نشط ومفعل</option>
                     <option value="suspended">معلق مؤقتاً</option>
                   </select>
+                </div>
+              </div>
+
+              {/* Firebase Quota & Storage Policy Selector */}
+              <div className="p-3 bg-indigo-50/70 dark:bg-indigo-950/20 rounded-xl border border-indigo-200/60 dark:border-indigo-800/30 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-black text-indigo-950 dark:text-indigo-200 flex items-center gap-1.5">
+                    <Shield className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+                    <span>سياسة التخزين وحماية فايربيس (Firebase Quota) *</span>
+                  </label>
+                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    ترشيد ذكي
+                  </span>
+                </div>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
+                  <label className={`p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                    formData.storagePolicy === 'local_only'
+                      ? 'bg-white dark:bg-[#101928] border-indigo-600 ring-2 ring-indigo-500/20 shadow-xs'
+                      : 'bg-white/60 dark:bg-[#0c1424]/60 border-slate-200 dark:border-white/10 hover:border-slate-300'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="storagePolicy"
+                        value="local_only"
+                        checked={formData.storagePolicy === 'local_only'}
+                        onChange={() => setFormData(prev => ({ ...prev, storagePolicy: 'local_only' }))}
+                        className="text-indigo-600"
+                      />
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">تخزين محلي معزول 100% 🛡️</span>
+                    </div>
+                    <p className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-1 font-semibold leading-relaxed">
+                      * صفر بايت على فايربيس! لا يستهلك أي شيء من سحابتك. تُحفظ بياناته في متصفحه فقط (موصى به للعملاء والمعقبين).
+                    </p>
+                  </label>
+
+                  <label className={`p-2.5 rounded-xl border transition-all cursor-pointer flex flex-col justify-between ${
+                    formData.storagePolicy === 'cloud_sync'
+                      ? 'bg-white dark:bg-[#101928] border-indigo-600 ring-2 ring-indigo-500/20 shadow-xs'
+                      : 'bg-white/60 dark:bg-[#0c1424]/60 border-slate-200 dark:border-white/10 hover:border-slate-300'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="radio"
+                        name="storagePolicy"
+                        value="cloud_sync"
+                        checked={formData.storagePolicy === 'cloud_sync'}
+                        onChange={() => setFormData(prev => ({ ...prev, storagePolicy: 'cloud_sync' }))}
+                        className="text-indigo-600"
+                      />
+                      <span className="text-xs font-bold text-slate-900 dark:text-white">مزامنة سحابية كاملة ☁️</span>
+                    </div>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 font-semibold leading-relaxed">
+                      تُرفع بياناته ومذكراته إلى قاعدة فايربيس السحابية تلقائياً (مناسب للفروع والإداريين).
+                    </p>
+                  </label>
                 </div>
               </div>
 

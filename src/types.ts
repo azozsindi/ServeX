@@ -133,6 +133,7 @@ export interface UserAccount {
   createdAt: string;
   lastLoginAt?: string;
   notes?: string;
+  storagePolicy?: 'local_only' | 'cloud_sync'; // 'local_only' = 0 bytes consumed on Firebase, 'cloud_sync' = syncs to Firestore
   permissions: {
     canUseCalculator: boolean;
     canManageTasks: boolean;

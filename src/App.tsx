@@ -572,7 +572,9 @@ export default function App() {
 
   const handleSaveTasks = (updated: Task[]) => {
     setTasks(updated);
-    if (isCloudSyncEnabled && currentUser) {
+    // Protect Firebase quota: only upload if cloud sync is enabled AND user has cloud permission
+    const canSyncToCloud = isMasterAdmin || activeUser?.storagePolicy === 'cloud_sync';
+    if (isCloudSyncEnabled && currentUser && canSyncToCloud) {
       // Sync new/updated ones
       for (const item of updated) {
         uploadTaskToCloud(item).catch(err => console.error(err));
@@ -587,7 +589,8 @@ export default function App() {
 
   const handleSaveNotes = (updated: QuickNote[]) => {
     setNotes(updated);
-    if (isCloudSyncEnabled && currentUser) {
+    const canSyncToCloud = isMasterAdmin || activeUser?.storagePolicy === 'cloud_sync';
+    if (isCloudSyncEnabled && currentUser && canSyncToCloud) {
       for (const item of updated) {
         uploadQuickNoteToCloud(item).catch(err => console.error(err));
       }
@@ -595,6 +598,74 @@ export default function App() {
       for (const r of removed) {
         deleteQuickNoteFromCloud(r.id).catch(err => console.error(err));
       }
+    }
+  };
+
+  // --- Automated Cleanup & Archiving to protect Firebase storage ---
+  const handleArchiveCompletedTasks = (daysOld: number = 30): { archivedCount: number } => {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - daysOld);
+
+    const tasksToKeep: Task[] = [];
+    const archivedTasks: Task[] = [];
+
+    for (const t of tasks) {
+      if (t.status === 'completed' || t.status === 'canceled') {
+        const taskDate = t.createdAt ? new Date(t.createdAt) : null;
+        if (!taskDate || isNaN(taskDate.getTime()) || taskDate < cutoffDate) {
+          archivedTasks.push(t);
+          continue;
+        }
+      }
+      tasksToKeep.push(t);
+    }
+
+    if (archivedTasks.length > 0) {
+      // Auto-download local archive backup file for safety
+      try {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(archivedTasks, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `archive_completed_tasks_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+      } catch (e) {
+        console.error("Archive export error", e);
+      }
+
+      setTasks(tasksToKeep);
+      if (isCloudSyncEnabled && currentUser) {
+        for (const arch of archivedTasks) {
+          deleteTaskFromCloud(arch.id).catch(err => console.error(err));
+        }
+      }
+    }
+
+    return { archivedCount: archivedTasks.length };
+  };
+
+  const handleExportAllData = () => {
+    const backup = {
+      exportedAt: new Date().toISOString(),
+      officeName,
+      platforms,
+      tasks,
+      notes,
+      templates,
+      petitions,
+      userAccounts
+    };
+    try {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(backup, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `full_backup_${officeName.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    } catch (e) {
+      console.error("Export all data error", e);
     }
   };
 
@@ -1540,6 +1611,11 @@ export default function App() {
                 onSwitchToWorkspace={handleSwitchToWorkspace}
                 currentActiveWorkspaceId={activeWorkspaceId}
                 isLoggedIn={isLoggedIn}
+                totalTasksCount={tasks.length}
+                totalNotesCount={notes.length}
+                totalPlatformsCount={platforms.length}
+                onArchiveCompletedTasks={handleArchiveCompletedTasks}
+                onExportAllData={handleExportAllData}
               />
             </div>
           )}

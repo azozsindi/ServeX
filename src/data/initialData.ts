@@ -1124,6 +1124,7 @@ export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
     status: 'active',
     createdAt: '2026-01-15',
     notes: 'مكلف بمتابعة معاملات قوى والتأمينات الاجتماعية والجوازات بالرياض',
+    storagePolicy: 'local_only',
     permissions: {
       canUseCalculator: true,
       canManageTasks: true,
@@ -1147,6 +1148,7 @@ export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
     status: 'active',
     createdAt: '2026-02-01',
     notes: 'عميل منشأة - متابعة رخص العمل ونقل الكفالات والسجلات التجارية',
+    storagePolicy: 'local_only',
     permissions: {
       canUseCalculator: true,
       canManageTasks: true,
@@ -1170,6 +1172,7 @@ export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
     status: 'active',
     createdAt: '2026-01-20',
     notes: 'فرع العاصمة المقدسة - جميع معاملات الجوازات والبلديات ومكتب العمل بمكة',
+    storagePolicy: 'cloud_sync',
     permissions: {
       canUseCalculator: true,
       canManageTasks: true,
