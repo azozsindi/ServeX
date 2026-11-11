@@ -834,7 +834,7 @@ export default function App() {
     { id: 'notes', label: 'الملاحظات مذكراتي', icon: NotebookPen, count: currentWorkspaceNotes.length, color: 'text-rose-500' },
     { id: 'calendar', label: 'التقويم والتواريخ', icon: CalendarIcon, count: null, color: 'text-purple-500' },
     { id: 'assistant', label: 'المساعد الذكي الفوري', icon: Sparkles, count: 'AI', color: 'text-orange-500 shadow-sm' },
-    ...(isMasterAdmin ? [{ id: 'users' as const, label: 'الحسابات والمساحات', icon: Users, count: userAccounts.length, color: 'text-indigo-500' }] : []),
+    ...(isMasterAdmin ? [{ id: 'users' as const, label: 'حسابات الموظفين', icon: Users, count: userAccounts.length, color: 'text-indigo-500' }] : []),
     ...(isMasterAdmin ? [{ id: 'settings' as const, label: 'إعدادات المكتب والبيانات', icon: Settings, count: null, color: 'text-slate-400' }] : [])
   ];
 
@@ -891,7 +891,7 @@ export default function App() {
                 <input
                   type="text"
                   required
-                  placeholder="أدخل اسم المستخدم (azos)..."
+                  placeholder="أدخل اسم المستخدم..."
                   value={loginUser}
                   onChange={(e) => setLoginUser(e.target.value)}
                   className="w-full text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50/50 py-3 pl-3 pr-10 outline-none dark:border-white/10 dark:bg-[#152033] dark:text-white focus:border-emerald-500 focus:bg-white dark:focus:bg-[#152033]/50 transition"
@@ -907,7 +907,7 @@ export default function App() {
                 <input
                   type={showPassword ? "text" : "password"}
                   required
-                  placeholder="أدخل كلمة المرور السرية..."
+                  placeholder="أدخل كلمة المرور..."
                   value={loginPass}
                   onChange={(e) => setLoginPass(e.target.value)}
                   className="w-full text-xs font-semibold rounded-xl border border-slate-200 bg-slate-50/50 py-3 pl-10 pr-10 outline-none dark:border-white/10 dark:bg-[#152033] dark:text-white focus:border-emerald-500 focus:bg-white dark:focus:bg-[#152033]/50 transition font-sans"
@@ -925,79 +925,13 @@ export default function App() {
               </div>
             </div>
 
-            {/* Credentials Info Tip Box */}
-            <div className="p-3 bg-emerald-500/5 dark:bg-[#121b2b] rounded-xl border border-emerald-550/15 text-[11px] text-slate-500 dark:text-slate-350 leading-relaxed font-semibold text-right space-y-2">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-1 font-bold text-emerald-600 dark:text-emerald-400">
-                  <KeyRound className="h-3.5 w-3.5" />
-                  <span>بوابات الدخول والمساحات المتاحة:</span>
-                </div>
-                <span className="text-[9px] text-slate-400">اختر للتعبئة السريعة:</span>
-              </div>
-
-              {/* Quick Preset Buttons */}
-              <div className="grid grid-cols-2 gap-1.5 pt-0.5">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginUser('azos');
-                    setLoginPass('Aa@000a000');
-                  }}
-                  className="p-1.5 text-right bg-white dark:bg-[#152033] hover:bg-emerald-50 dark:hover:bg-emerald-950/30 border border-slate-200 dark:border-white/5 rounded-lg transition text-[10px] cursor-pointer"
-                >
-                  <div className="font-bold text-slate-800 dark:text-white">مدير النظام (كامل) 👑</div>
-                  <div className="font-mono text-[9px] text-emerald-600 dark:text-emerald-400">azos</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginUser('saad_muaqeb');
-                    setLoginPass('Saad@2026_pass');
-                  }}
-                  className="p-1.5 text-right bg-white dark:bg-[#152033] hover:bg-blue-50 dark:hover:bg-blue-950/30 border border-slate-200 dark:border-white/5 rounded-lg transition text-[10px] cursor-pointer"
-                >
-                  <div className="font-bold text-slate-800 dark:text-white">معقب / موظف 💼</div>
-                  <div className="font-mono text-[9px] text-blue-600 dark:text-blue-400">saad_muaqeb</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginUser('alrowad_co');
-                    setLoginPass('Rowad@2026_client');
-                  }}
-                  className="p-1.5 text-right bg-white dark:bg-[#152033] hover:bg-teal-50 dark:hover:bg-teal-950/30 border border-slate-200 dark:border-white/5 rounded-lg transition text-[10px] cursor-pointer"
-                >
-                  <div className="font-bold text-slate-800 dark:text-white">عميل / منشأة 🏢</div>
-                  <div className="font-mono text-[9px] text-teal-600 dark:text-teal-400">alrowad_co</div>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => {
-                    setLoginUser('branch_makkah');
-                    setLoginPass('Makkah@2026_branch');
-                  }}
-                  className="p-1.5 text-right bg-white dark:bg-[#152033] hover:bg-amber-50 dark:hover:bg-amber-950/30 border border-slate-200 dark:border-white/5 rounded-lg transition text-[10px] cursor-pointer"
-                >
-                  <div className="font-bold text-slate-800 dark:text-white">فرع معتمد 📍</div>
-                  <div className="font-mono text-[9px] text-amber-600 dark:text-amber-400">branch_makkah</div>
-                </button>
-              </div>
-
-              <p className="text-[9.5px] text-slate-400 pt-0.5 leading-tight">
-                * يدعم النظام أي حساب مخصص ينشئه المدير من قسم "الحسابات والمساحات" بمساحة عمل مستقلة تماماً.
-              </p>
-            </div>
-
             {/* Login button */}
             <button
               type="submit"
-              className="w-full py-3 bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-700 hover:to-emerald-600 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-2 transform active:scale-[0.98]"
+              className="w-full py-3 bg-gradient-to-r from-teal-600 to-emerald-500 hover:from-teal-700 hover:to-emerald-600 text-white font-bold rounded-xl text-xs shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer mt-4 transform active:scale-[0.98]"
             >
               <ShieldCheck className="h-4.5 w-4.5" />
-              <span>تسجيل الدخول الآمن للوحة التحكم</span>
+              <span>تسجيل الدخول للوحة التحكم</span>
             </button>
           </form>
 
@@ -1075,7 +1009,7 @@ export default function App() {
                     {activeUser.displayName}
                   </span>
                   <span className="block text-[9px] text-indigo-600 dark:text-indigo-400 font-bold">
-                    {activeUser.role === 'admin' ? 'مدير عام 👑' : activeUser.role === 'employee' ? 'معقب / موظف 💼' : activeUser.role === 'client' ? 'عميل منشأة 🏢' : activeUser.role === 'branch' ? 'فرع معتمد 📍' : 'شريك 🤝'}
+                    {activeUser.role === 'admin' ? 'مدير النظام 👑' : 'موظف المكتب 💼'}
                   </span>
                 </div>
               </div>
@@ -1102,38 +1036,6 @@ export default function App() {
 
         </div>
       </header>
-
-      {/* ACTIVE WORKSPACE SCOPE BANNER (Shown when viewing a specialized workspace) */}
-      {activeWorkspaceId !== 'ws-main' && (
-        <div className="bg-gradient-to-r from-indigo-950 via-slate-900 to-indigo-900 text-white border-b border-indigo-500/30 px-3 sm:px-6 py-2.5 flex items-center justify-between gap-3 shadow-md z-30 shrink-0">
-          <div className="flex items-center gap-2 text-xs min-w-0">
-            <span className="p-1 bg-indigo-500/30 rounded-lg text-indigo-300 shrink-0">
-              <ArrowRightLeft className="h-4 w-4" />
-            </span>
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-slate-300 text-[11px]">أنت الآن داخل مساحة العمل:</span>
-              <span className="font-black text-amber-300 bg-amber-500/10 border border-amber-400/30 px-2 py-0.5 rounded-md text-xs">
-                {userAccounts.find(u => u.workspaceId === activeWorkspaceId)?.workspaceName || activeWorkspaceId}
-              </span>
-              {isMasterAdmin && (
-                <span className="text-[10px] bg-purple-500/30 text-purple-200 px-2 py-0.5 rounded-full font-bold">
-                  معاينة إدارية مباشرة
-                </span>
-              )}
-            </div>
-          </div>
-
-          {isMasterAdmin && (
-            <button
-              onClick={handleResetToMainWorkspace}
-              className="text-[11px] font-black bg-amber-500 hover:bg-amber-400 text-slate-950 px-3 py-1.5 rounded-xl transition shadow-sm flex items-center gap-1 cursor-pointer shrink-0"
-            >
-              <span>العودة للمساحة الرئيسية</span>
-              <ChevronLeft className="h-3.5 w-3.5" />
-            </button>
-          )}
-        </div>
-      )}
 
       {/* BODY LAYOUT CONTAINER: Separating fixed collapsible LEFT sidebar and content RIGHT */}
       <div className="flex-1 flex flex-col md:flex-row min-h-0 relative">
