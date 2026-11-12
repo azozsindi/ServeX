@@ -41,7 +41,17 @@ import {
   Percent,
   Calendar,
   User,
-  Phone
+  Phone,
+  Plane,
+  Home,
+  Car,
+  Store,
+  Users2,
+  ArrowRight,
+  Send,
+  Download,
+  Copy,
+  Receipt
 } from 'lucide-react';
 
 interface FeeCalculatorProps {
@@ -49,15 +59,28 @@ interface FeeCalculatorProps {
   officeName?: string;
   isLoggedIn?: boolean;
   workspaceId?: string;
+  onConvertToTask?: (task: any) => void;
 }
 
-type CalculatorTab = 'commercial' | 'sponsorship' | 'iqama' | 'work_permit' | 'single' | 'custom';
+type CalculatorTab = 
+  | 'commercial' 
+  | 'sponsorship' 
+  | 'iqama' 
+  | 'work_permit' 
+  | 'dependents' 
+  | 'visas' 
+  | 'domestic' 
+  | 'traffic' 
+  | 'balady' 
+  | 'single' 
+  | 'custom';
 
 export default function FeeCalculator({ 
   defaultOfficeFee = 150, 
   officeName = 'مكتب الخدمات العامة الموحد',
   isLoggedIn = false,
-  workspaceId = 'ws-main'
+  workspaceId = 'ws-main',
+  onConvertToTask
 }: FeeCalculatorProps) {
   // Active Navigation Tab
   const [activeTab, setActiveTab] = useState<CalculatorTab>('commercial');
@@ -110,6 +133,11 @@ export default function FeeCalculator({
     }
     return [];
   });
+
+  // Scoped quotes history for strict workspace isolation (new accounts start at 0)
+  const scopedQuotesHistory = workspaceId === 'ws-main'
+    ? quotesHistory.filter(q => !q.workspaceId || q.workspaceId === 'ws-main')
+    : quotesHistory.filter(q => q.workspaceId === workspaceId);
 
   // Save to localStorage
   useEffect(() => {
@@ -199,7 +227,68 @@ export default function FeeCalculator({
   const [wpOfficeFee, setWpOfficeFee] = useState<number>(defaultOfficeFee || 150);
 
   // =========================================================================
-  // 5. Single Fast Services Catalog State
+  // 5. Dependents & Family Levy (المقابل المالي للمرافقين والتابعين) State
+  // =========================================================================
+  const [depCount, setDepCount] = useState<number>(2);
+  const [depMonths, setDepMonths] = useState<number>(12); // 1-24 months (400 SAR/month/dependent)
+  const [depIncludeSponsorIqama, setDepIncludeSponsorIqama] = useState<boolean>(true); // 650 SAR
+  const [depOfficeFee, setDepOfficeFee] = useState<number>(defaultOfficeFee || 150);
+
+  // =========================================================================
+  // 6. Visas (تأشيرات الخروج والعودة والزيارة والخروج النهائي) State
+  // =========================================================================
+  const [visaType, setVisaType] = useState<'exit_single' | 'exit_multi' | 'final_exit' | 'visit_ext'>('exit_single');
+  const [visaWorkerCount, setVisaWorkerCount] = useState<number>(1);
+  const [visaSingleMonths, setVisaSingleMonths] = useState<number>(2); // 2 months base 200, +100/month after
+  const [visaMultiMonths, setVisaMultiMonths] = useState<number>(3); // 3 months base 500, +200/month after
+  const [visaVisitDurationMonths, setVisaVisitDurationMonths] = useState<number>(1); // 1-6 months (100 SAR/month)
+  const [visaIncludeInsurance, setVisaIncludeInsurance] = useState<boolean>(true);
+  const [visaInsuranceFee, setVisaInsuranceFee] = useState<number>(85);
+  const [visaOfficeFee, setVisaOfficeFee] = useState<number>(defaultOfficeFee || 100);
+
+  // =========================================================================
+  // 7. Domestic Workers & Musaned (العمالة المنزلية ومنصة مساند) State
+  // =========================================================================
+  const [domesticService, setDomesticService] = useState<'recruitment_visa' | 'transfer' | 'renewal'>('recruitment_visa');
+  const [domesticWorkerCount, setDomesticWorkerCount] = useState<number>(1);
+  const [domesticTransferTimes, setDomesticTransferTimes] = useState<number>(1); // 1st (2000), 2nd (4000), 3rd+ (6000)
+  const [domesticIncludeInsurance, setDomesticIncludeInsurance] = useState<boolean>(true);
+  const [domesticInsuranceFee, setDomesticInsuranceFee] = useState<number>(450);
+  const [domesticLatePenalty, setDomesticLatePenalty] = useState<boolean>(false); // 500 SAR if late
+  const [domesticOfficeFee, setDomesticOfficeFee] = useState<number>(defaultOfficeFee || 200);
+
+  // =========================================================================
+  // 8. Traffic & Vehicles (المرور ورخص السير ونقل الملكية) State
+  // =========================================================================
+  const [trafficService, setTrafficService] = useState<'vehicle_renewal' | 'ownership_transfer' | 'license_renewal' | 'lost_damaged'>('vehicle_renewal');
+  const [vehicleType, setVehicleType] = useState<'private' | 'pickup' | 'heavy' | 'motorcycle'>('private');
+  const [vehicleLateYears, setVehicleLateYears] = useState<number>(0); // 100 SAR/year penalty
+  const [trafficIncludeInspection, setTrafficIncludeInspection] = useState<boolean>(false);
+  const [trafficInspectionFee, setTrafficInspectionFee] = useState<number>(115);
+  const [licenseDuration, setLicenseDuration] = useState<number>(10); // 2 (80), 5 (200), 10 (400)
+  const [licenseIncludeMedical, setLicenseIncludeMedical] = useState<boolean>(true);
+  const [licenseMedicalFee, setLicenseMedicalFee] = useState<number>(100);
+  const [trafficOfficeFee, setTrafficOfficeFee] = useState<number>(defaultOfficeFee || 150);
+
+  // =========================================================================
+  // 9. Balady & Commercial Municipal Licenses (رخص البلدية وإشغال المتاجر واللوحات) State
+  // =========================================================================
+  const [baladyArea, setBaladyArea] = useState<number>(50); // m²
+  const [baladyRatePerMeter, setBaladyRatePerMeter] = useState<number>(10); // 10 SAR/m²/year
+  const [baladyYears, setBaladyYears] = useState<number>(1); // 1-5 years
+  const [baladySignboardType, setBaladySignboardType] = useState<'illuminated' | 'regular' | 'none'>('illuminated');
+  const [baladySignboardArea, setBaladySignboardArea] = useState<number>(4); // m² (200 SAR/m² illuminated, 100 regular)
+  const [baladyWorkersCount, setBaladyWorkersCount] = useState<number>(2);
+  const [baladyIncludeHealthCert, setBaladyIncludeHealthCert] = useState<boolean>(true); // 60 SAR per worker
+  const [baladyIncludeCivilDefense, setBaladyIncludeCivilDefense] = useState<boolean>(true); // 150 SAR (Salamah)
+  const [baladyIncludeWasteFee, setBaladyIncludeWasteFee] = useState<boolean>(true); // 250 SAR/year
+  const [baladyOfficeFee, setBaladyOfficeFee] = useState<number>(defaultOfficeFee || 350);
+
+  // Conversion feedback
+  const [convertedTaskSuccess, setConvertedTaskSuccess] = useState<boolean>(false);
+
+  // =========================================================================
+  // 10. Single Fast Services Catalog State
   // =========================================================================
   const [selectedSingleServiceId, setSelectedSingleServiceId] = useState<string>(services[0]?.id || '');
   const [singleQty, setSingleQty] = useState<number>(1);
@@ -554,7 +643,422 @@ export default function FeeCalculator({
       }
     }
 
-    // 5. SINGLE FAST SERVICE
+    // 5. DEPENDENTS & FAMILY LEVY
+    else if (activeTab === 'dependents') {
+      serviceTitle = `المقابل المالي للمرافقين والتابعين (${depCount} مرافقين - ${depMonths} شهراً)`;
+      const totalLevy = depCount * depMonths * 400;
+
+      items.push({
+        id: 'dep-levy',
+        name: `المقابل المالي للتابعين والمرافقين (${depCount} أفراد × ${depMonths} شهر × 400 ريال)`,
+        entity: 'المديرية العامة للجوازات / وزارة المالية',
+        quantity: depCount,
+        unitGovernmentFee: depMonths * 400,
+        totalGovernmentFee: totalLevy,
+        unitOfficeFee: depOfficeFee,
+        totalOfficeFee: depOfficeFee,
+        discount: 0,
+        notes: 'الاستحقاق الشهري النظامي 400 ريال لكل مرافق أو تابع'
+      });
+
+      if (depIncludeSponsorIqama) {
+        items.push({
+          id: 'dep-sponsor-iqama',
+          name: 'تجديد إقامة الكفيل / المستضيف رب الأسرة (سنة)',
+          entity: 'المديرية العامة للجوازات',
+          quantity: 1,
+          unitGovernmentFee: 650,
+          totalGovernmentFee: 650,
+          unitOfficeFee: 0,
+          totalOfficeFee: 0,
+          discount: 0
+        });
+      }
+    }
+
+    // 6. VISAS (EXIT/RE-ENTRY, FINAL EXIT, VISIT EXTENSION)
+    else if (activeTab === 'visas') {
+      if (visaType === 'exit_single') {
+        const extraMonths = Math.max(0, visaSingleMonths - 2);
+        const feePerPerson = 200 + extraMonths * 100;
+        serviceTitle = `تأشيرة خروج وعودة مفردة (${visaWorkerCount} عمال - مدة ${visaSingleMonths} شهر)`;
+
+        items.push({
+          id: 'visa-single',
+          name: `رسوم خروج وعودة مفردة (${visaSingleMonths} شهر: 200 ريال لأول شهرين + ${extraMonths * 100} ريال إضافية)`,
+          entity: 'المديرية العامة للجوازات',
+          quantity: visaWorkerCount,
+          unitGovernmentFee: feePerPerson,
+          totalGovernmentFee: feePerPerson * visaWorkerCount,
+          unitOfficeFee: visaOfficeFee,
+          totalOfficeFee: visaOfficeFee * visaWorkerCount,
+          discount: 0
+        });
+      } else if (visaType === 'exit_multi') {
+        const extraMonths = Math.max(0, visaMultiMonths - 3);
+        const feePerPerson = 500 + extraMonths * 200;
+        serviceTitle = `تأشيرة خروج وعودة متعددة (${visaWorkerCount} عمال - مدة ${visaMultiMonths} شهر)`;
+
+        items.push({
+          id: 'visa-multi',
+          name: `رسوم خروج وعودة متعددة (${visaMultiMonths} شهر: 500 ريال لأول 3 أشهر + ${extraMonths * 200} ريال إضافية)`,
+          entity: 'المديرية العامة للجوازات',
+          quantity: visaWorkerCount,
+          unitGovernmentFee: feePerPerson,
+          totalGovernmentFee: feePerPerson * visaWorkerCount,
+          unitOfficeFee: visaOfficeFee,
+          totalOfficeFee: visaOfficeFee * visaWorkerCount,
+          discount: 0
+        });
+      } else if (visaType === 'final_exit') {
+        serviceTitle = `تأشيرة خروج نهائي (${visaWorkerCount} عمال)`;
+
+        items.push({
+          id: 'visa-final',
+          name: 'إصدار تأشيرة خروج نهائي (مجانية نظامياً مع سريان الإقامة)',
+          entity: 'المديرية العامة للجوازات',
+          quantity: visaWorkerCount,
+          unitGovernmentFee: 0,
+          totalGovernmentFee: 0,
+          unitOfficeFee: visaOfficeFee,
+          totalOfficeFee: visaOfficeFee * visaWorkerCount,
+          discount: 0,
+          notes: 'يشترط سريان الإقامة وخلو السجل من المخالفات المرورية'
+        });
+      } else {
+        // visit extension
+        const govFeePerPerson = visaVisitDurationMonths * 100;
+        serviceTitle = `تمديد تأشيرة زيارة عائلية/تجارية (${visaWorkerCount} أفراد - مدة ${visaVisitDurationMonths} شهر)`;
+
+        items.push({
+          id: 'visa-visit-ext',
+          name: `رسوم الجوازات لتمديد الزيارة (${visaVisitDurationMonths} شهر × 100 ريال)`,
+          entity: 'المديرية العامة للجوازات',
+          quantity: visaWorkerCount,
+          unitGovernmentFee: govFeePerPerson,
+          totalGovernmentFee: govFeePerPerson * visaWorkerCount,
+          unitOfficeFee: visaOfficeFee,
+          totalOfficeFee: visaOfficeFee * visaWorkerCount,
+          discount: 0
+        });
+
+        if (visaIncludeInsurance) {
+          items.push({
+            id: 'visa-visit-ins',
+            name: `وثيقة تأمين تمديد الزيارة المعتمدة (مجلس الضمان الصحي)`,
+            entity: 'شركات التأمين الصحي المعتمدة',
+            quantity: visaWorkerCount,
+            unitGovernmentFee: visaInsuranceFee,
+            totalGovernmentFee: visaInsuranceFee * visaWorkerCount,
+            unitOfficeFee: 0,
+            totalOfficeFee: 0,
+            discount: 0
+          });
+        }
+      }
+    }
+
+    // 7. DOMESTIC WORKERS & MUSANED
+    else if (activeTab === 'domestic') {
+      if (domesticService === 'recruitment_visa') {
+        serviceTitle = `إصدار تأشيرة استقدام عمالة منزلية مساند (${domesticWorkerCount} تأشيرة)`;
+
+        items.push({
+          id: 'dom-jawazat-visa',
+          name: 'رسوم التأشيرة الحكومية (الجوازات)',
+          entity: 'وزارة الخارجية / الجوازات',
+          quantity: domesticWorkerCount,
+          unitGovernmentFee: 2000,
+          totalGovernmentFee: 2000 * domesticWorkerCount,
+          unitOfficeFee: domesticOfficeFee,
+          totalOfficeFee: domesticOfficeFee * domesticWorkerCount,
+          discount: 0
+        });
+
+        items.push({
+          id: 'dom-musaned-fee',
+          name: 'رسوم خدمة منصة مساند الحكومية',
+          entity: 'منصة مساند (وزارة الموارد البشرية)',
+          quantity: domesticWorkerCount,
+          unitGovernmentFee: 172.5,
+          totalGovernmentFee: 172.5 * domesticWorkerCount,
+          unitOfficeFee: 0,
+          totalOfficeFee: 0,
+          discount: 0
+        });
+
+        if (domesticIncludeInsurance) {
+          items.push({
+            id: 'dom-insurance',
+            name: 'وثيقة التأمين الإلزامي على عقود العمالة المنزلية (سنتين)',
+            entity: 'شركات التأمين المعتمدة عبر مساند',
+            quantity: domesticWorkerCount,
+            unitGovernmentFee: domesticInsuranceFee,
+            totalGovernmentFee: domesticInsuranceFee * domesticWorkerCount,
+            unitOfficeFee: 0,
+            totalOfficeFee: 0,
+            discount: 0
+          });
+        }
+      } else if (domesticService === 'transfer') {
+        const transferGov = domesticTransferTimes === 1 ? 2000 : domesticTransferTimes === 2 ? 4000 : 6000;
+        serviceTitle = `نقل كفالة عمالة منزلية (${domesticWorkerCount} أفراد - المرة ${domesticTransferTimes === 1 ? 'الأولى' : domesticTransferTimes === 2 ? 'الثانية' : 'الثالثة فأكثر'})`;
+
+        items.push({
+          id: 'dom-transfer',
+          name: `رسوم نقل خدمات عامل منزلي (المرة ${domesticTransferTimes === 1 ? 'الأولى' : domesticTransferTimes === 2 ? 'الثانية' : 'الثالثة فأكثر'})`,
+          entity: 'المديرية العامة للجوازات',
+          quantity: domesticWorkerCount,
+          unitGovernmentFee: transferGov,
+          totalGovernmentFee: transferGov * domesticWorkerCount,
+          unitOfficeFee: domesticOfficeFee,
+          totalOfficeFee: domesticOfficeFee * domesticWorkerCount,
+          discount: 0
+        });
+      } else {
+        // renewal
+        serviceTitle = `تجديد إقامة عمالة منزلية (${domesticWorkerCount} أفراد)`;
+
+        items.push({
+          id: 'dom-renew',
+          name: 'رسوم تجديد إقامة عمالة منزلية سنوية (الجوازات)',
+          entity: 'المديرية العامة للجوازات',
+          quantity: domesticWorkerCount,
+          unitGovernmentFee: 600,
+          totalGovernmentFee: 600 * domesticWorkerCount,
+          unitOfficeFee: domesticOfficeFee,
+          totalOfficeFee: domesticOfficeFee * domesticWorkerCount,
+          discount: 0
+        });
+
+        if (domesticLatePenalty) {
+          items.push({
+            id: 'dom-penalty',
+            name: 'غرامة تأخير تجديد الإقامة المنتهية (500 ريال)',
+            entity: 'المديرية العامة للجوازات',
+            quantity: domesticWorkerCount,
+            unitGovernmentFee: 500,
+            totalGovernmentFee: 500 * domesticWorkerCount,
+            unitOfficeFee: 0,
+            totalOfficeFee: 0,
+            discount: 0
+          });
+        }
+      }
+    }
+
+    // 8. TRAFFIC & VEHICLE REGISTRATIONS
+    else if (activeTab === 'traffic') {
+      if (trafficService === 'vehicle_renewal') {
+        const typeLabel = vehicleType === 'private' ? 'خصوصي' : vehicleType === 'pickup' ? 'نقل خاص' : vehicleType === 'heavy' ? 'نقل عام' : 'دراجة نارية';
+        const fee3Years = vehicleType === 'private' ? 300 : vehicleType === 'pickup' ? 600 : vehicleType === 'heavy' ? 1200 : 300;
+        serviceTitle = `تجديد رخصة سير مركبة (${typeLabel}) - 3 سنوات`;
+
+        items.push({
+          id: 'trf-renewal',
+          name: `رسوم تجديد استمارة السير (${typeLabel} لمدة 3 سنوات)`,
+          entity: 'الإدارة العامة للمرور',
+          quantity: 1,
+          unitGovernmentFee: fee3Years,
+          totalGovernmentFee: fee3Years,
+          unitOfficeFee: trafficOfficeFee,
+          totalOfficeFee: trafficOfficeFee,
+          discount: 0
+        });
+
+        if (vehicleLateYears > 0) {
+          items.push({
+            id: 'trf-late',
+            name: `غرامة تطويف / تأخير تجديد الاستمارة (${vehicleLateYears} ${vehicleLateYears === 1 ? 'سنة' : 'سنوات'} × 100 ريال)`,
+            entity: 'الإدارة العامة للمرور',
+            quantity: vehicleLateYears,
+            unitGovernmentFee: 100,
+            totalGovernmentFee: vehicleLateYears * 100,
+            unitOfficeFee: 0,
+            totalOfficeFee: 0,
+            discount: 0
+          });
+        }
+
+        if (trafficIncludeInspection) {
+          items.push({
+            id: 'trf-mvpi',
+            name: 'رسوم الفحص الفني الدوري الشامل (MVPI)',
+            entity: 'مراكز الفحص الفني الدوري',
+            quantity: 1,
+            unitGovernmentFee: trafficInspectionFee,
+            totalGovernmentFee: trafficInspectionFee,
+            unitOfficeFee: 0,
+            totalOfficeFee: 0,
+            discount: 0
+          });
+        }
+      } else if (trafficService === 'ownership_transfer') {
+        const typeLabel = vehicleType === 'private' ? 'خصوصي' : 'نقل خاص';
+        const trfFee = vehicleType === 'private' ? 150 : 300;
+        serviceTitle = `نقل ملكية مركبة ومبايعة (${typeLabel})`;
+
+        items.push({
+          id: 'trf-own-gov',
+          name: `رسوم المرور لنقل ملكية المركبة (${typeLabel})`,
+          entity: 'الإدارة العامة للمرور',
+          quantity: 1,
+          unitGovernmentFee: trfFee,
+          totalGovernmentFee: trfFee,
+          unitOfficeFee: trafficOfficeFee,
+          totalOfficeFee: trafficOfficeFee,
+          discount: 0
+        });
+
+        items.push({
+          id: 'trf-absher-tamm',
+          name: 'رسوم خدمة مبايعة المركبات عبر منصة أبشر / تم المعتمدة',
+          entity: 'منصة أبشر / تم (علم)',
+          quantity: 1,
+          unitGovernmentFee: 230,
+          totalGovernmentFee: 230,
+          unitOfficeFee: 0,
+          totalOfficeFee: 0,
+          discount: 0
+        });
+
+        if (trafficIncludeInspection) {
+          items.push({
+            id: 'trf-own-mvpi',
+            name: 'رسوم الفحص الدوري لسلامة المركبة',
+            entity: 'مراكز الفحص الفني الدوري',
+            quantity: 1,
+            unitGovernmentFee: trafficInspectionFee,
+            totalGovernmentFee: trafficInspectionFee,
+            unitOfficeFee: 0,
+            totalOfficeFee: 0,
+            discount: 0
+          });
+        }
+      } else if (trafficService === 'license_renewal') {
+        const licCost = licenseDuration === 2 ? 80 : licenseDuration === 5 ? 200 : 400;
+        serviceTitle = `تجديد رخصة القيادة (${licenseDuration} سنوات)`;
+
+        items.push({
+          id: 'trf-lic-gov',
+          name: `رسوم المرور لتجديد رخصة القيادة (${licenseDuration} سنوات)`,
+          entity: 'الإدارة العامة للمرور',
+          quantity: 1,
+          unitGovernmentFee: licCost,
+          totalGovernmentFee: licCost,
+          unitOfficeFee: trafficOfficeFee,
+          totalOfficeFee: trafficOfficeFee,
+          discount: 0
+        });
+
+        if (licenseIncludeMedical) {
+          items.push({
+            id: 'trf-lic-med',
+            name: 'تقرير الفحص الطبي الإلكتروني (إفادة / أبشر)',
+            entity: 'المراكز والمستوصفات الطبية المعتمدة',
+            quantity: 1,
+            unitGovernmentFee: licenseMedicalFee,
+            totalGovernmentFee: licenseMedicalFee,
+            unitOfficeFee: 0,
+            totalOfficeFee: 0,
+            discount: 0
+          });
+        }
+      } else {
+        // Lost/Damaged
+        serviceTitle = 'إصدار بدل فاقد / تالف لرخصة القيادة أو السير';
+
+        items.push({
+          id: 'trf-lost',
+          name: 'رسوم المرور لإصدار بدل فاقد / تالف',
+          entity: 'الإدارة العامة للمرور',
+          quantity: 1,
+          unitGovernmentFee: 100,
+          totalGovernmentFee: 100,
+          unitOfficeFee: trafficOfficeFee,
+          totalOfficeFee: trafficOfficeFee,
+          discount: 0
+        });
+      }
+    }
+
+    // 9. BALADY & MUNICIPAL COMMERCIAL LICENSES
+    else if (activeTab === 'balady') {
+      serviceTitle = `إصدار وتجديد رخصة بلدية فورية (${baladyArea}م² - ${baladyYears} ${baladyYears === 1 ? 'سنة' : 'سنوات'})`;
+      const storeAreaFee = Math.round(baladyArea * baladyRatePerMeter * baladyYears);
+
+      items.push({
+        id: 'bld-area',
+        name: `رسوم إشغال مساحة المتجر (${baladyArea} م² × ${baladyRatePerMeter} ريال/م² × ${baladyYears} سنة)`,
+        entity: 'وزارة البلديات والإسكان (منصة بلدي)',
+        quantity: 1,
+        unitGovernmentFee: storeAreaFee,
+        totalGovernmentFee: storeAreaFee,
+        unitOfficeFee: baladyOfficeFee,
+        totalOfficeFee: baladyOfficeFee,
+        discount: 0
+      });
+
+      if (baladySignboardType !== 'none' && baladySignboardArea > 0) {
+        const signRate = baladySignboardType === 'illuminated' ? 200 : 100;
+        const signTotal = Math.round(baladySignboardArea * signRate * baladyYears);
+        items.push({
+          id: 'bld-sign',
+          name: `رسوم اللوحة الإعلانية (${baladySignboardType === 'illuminated' ? 'مضيئة' : 'غير مضيئة'} بمساحة ${baladySignboardArea} م² × ${signRate} ريال)`,
+          entity: 'أمانة المنطقة / منصة بلدي',
+          quantity: 1,
+          unitGovernmentFee: signTotal,
+          totalGovernmentFee: signTotal,
+          unitOfficeFee: 0,
+          totalOfficeFee: 0,
+          discount: 0
+        });
+      }
+
+      if (baladyIncludeWasteFee) {
+        items.push({
+          id: 'bld-waste',
+          name: `رسوم جمع ونقل النفايات البلدية (${baladyYears} سنة)`,
+          entity: 'الأمانة والبلدية التابعة',
+          quantity: 1,
+          unitGovernmentFee: 250 * baladyYears,
+          totalGovernmentFee: 250 * baladyYears,
+          unitOfficeFee: 0,
+          totalOfficeFee: 0,
+          discount: 0
+        });
+      }
+
+      if (baladyIncludeCivilDefense) {
+        items.push({
+          id: 'bld-salamah',
+          name: 'تقرير وشهادة سلامة الدفاع المدني الفورية',
+          entity: 'المديرية العامة للدفاع المدني (سلامة)',
+          quantity: 1,
+          unitGovernmentFee: 150,
+          totalGovernmentFee: 150,
+          unitOfficeFee: 0,
+          totalOfficeFee: 0,
+          discount: 0
+        });
+      }
+
+      if (baladyIncludeHealthCert && baladyWorkersCount > 0) {
+        items.push({
+          id: 'bld-health',
+          name: `إصدار الشهادات الصحية للعاملين (${baladyWorkersCount} عمال × 60 ريال)`,
+          entity: 'منصة بلدي - الشهادات الصحية',
+          quantity: baladyWorkersCount,
+          unitGovernmentFee: 60,
+          totalGovernmentFee: 60 * baladyWorkersCount,
+          unitOfficeFee: 0,
+          totalOfficeFee: 0,
+          discount: 0
+        });
+      }
+    }
+
+    // 10. SINGLE FAST SERVICE
     else if (activeTab === 'single') {
       const srv = services.find(s => s.id === selectedSingleServiceId) || services[0];
       serviceTitle = srv ? `${srv.name} (عدد ${singleQty})` : 'خدمة حكومية';
@@ -772,7 +1276,7 @@ export default function FeeCalculator({
               className="px-3.5 py-2 rounded-xl text-xs font-bold bg-slate-100 hover:bg-slate-200 dark:bg-[#152033] dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 border border-slate-200/80 dark:border-white/5 transition flex items-center gap-1.5 cursor-pointer shadow-xs"
             >
               <History className="h-4 w-4 text-amber-500" />
-              <span>سجل العمليات ({quotesHistory.length})</span>
+              <span>سجل العمليات ({scopedQuotesHistory.length})</span>
             </button>
 
             <button
@@ -885,6 +1389,66 @@ export default function FeeCalculator({
           >
             <Briefcase className="h-4 w-4" />
             <span>💼 رخص العمل والمقابل المالي</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('dependents')}
+            className={`px-4 py-2.5 rounded-t-2xl text-xs font-black transition shrink-0 flex items-center gap-2 cursor-pointer border-b-2 ${
+              activeTab === 'dependents'
+                ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Users2 className="h-4 w-4" />
+            <span>👨‍👩‍👧‍👦 رسوم التابعين والمرافقين</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('visas')}
+            className={`px-4 py-2.5 rounded-t-2xl text-xs font-black transition shrink-0 flex items-center gap-2 cursor-pointer border-b-2 ${
+              activeTab === 'visas'
+                ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Plane className="h-4 w-4" />
+            <span>✈️ تأشيرات خروج وزيارة</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('domestic')}
+            className={`px-4 py-2.5 rounded-t-2xl text-xs font-black transition shrink-0 flex items-center gap-2 cursor-pointer border-b-2 ${
+              activeTab === 'domestic'
+                ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Home className="h-4 w-4" />
+            <span>🏠 العمالة المنزلية (مساند)</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('traffic')}
+            className={`px-4 py-2.5 rounded-t-2xl text-xs font-black transition shrink-0 flex items-center gap-2 cursor-pointer border-b-2 ${
+              activeTab === 'traffic'
+                ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Car className="h-4 w-4" />
+            <span>🚗 المرور ورخص السير</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('balady')}
+            className={`px-4 py-2.5 rounded-t-2xl text-xs font-black transition shrink-0 flex items-center gap-2 cursor-pointer border-b-2 ${
+              activeTab === 'balady'
+                ? 'border-amber-500 text-amber-600 dark:text-amber-400 bg-amber-500/10'
+                : 'border-transparent text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white'
+            }`}
+          >
+            <Store className="h-4 w-4" />
+            <span>🏪 رخص بلدي واللوحات</span>
           </button>
 
           <button
@@ -1725,6 +2289,981 @@ export default function FeeCalculator({
             </div>
           )}
 
+          {/* TAB: DEPENDENTS & FAMILY LEVY */}
+          {activeTab === 'dependents' && (
+            <div className="bg-white/80 dark:bg-immersive-card backdrop-blur-md rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/50 dark:border-white/5 space-y-5">
+              <div className="border-b border-slate-150 dark:border-white/5 pb-3">
+                <h3 className="text-base font-black text-slate-850 dark:text-white flex items-center gap-2">
+                  <Users2 className="h-5 w-5 text-amber-500" />
+                  <span>حاسبة المقابل المالي للتابعين والمرافقين (الجوازات)</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  حساب المقابل المالي للمرافقين والتابعين (400 ريال شهرياً لكل مرافق) ومتبقي سريان الإقامة
+                </p>
+              </div>
+
+              {/* Dependents Count */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  1. عدد التابعين والمرافقين:
+                </label>
+                <div className="flex flex-wrap items-center gap-2">
+                  {[1, 2, 3, 4, 5, 6].map((num) => (
+                    <button
+                      key={num}
+                      type="button"
+                      onClick={() => setDepCount(num)}
+                      className={`px-3.5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${
+                        depCount === num
+                          ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                          : 'bg-slate-100 dark:bg-[#152033] text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                      }`}
+                    >
+                      {num} {num === 1 ? 'مرافق' : 'مرافقين'}
+                    </button>
+                  ))}
+                  <div className="flex items-center gap-1.5 mr-auto">
+                    <span className="text-xs text-slate-400">تخصيص:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="30"
+                      value={depCount}
+                      onChange={(e) => setDepCount(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-16 text-xs bg-slate-50 dark:bg-[#152033] border border-slate-200 dark:border-white/10 rounded-xl px-2 py-1.5 text-center font-mono font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Months Duration */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  2. عدد الأشهر المستحقة (حتى نهاية الإقامة أو التجديد):
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                  {[
+                    { m: 3, label: '3 أشهر (ربع سنوي)' },
+                    { m: 6, label: '6 أشهر (نصف سنوي)' },
+                    { m: 9, label: '9 أشهر' },
+                    { m: 12, label: '12 شهر (سنة كاملة)' },
+                    { m: 24, label: '24 شهر (سنتين)' }
+                  ].map((item) => (
+                    <button
+                      key={item.m}
+                      type="button"
+                      onClick={() => setDepMonths(item.m)}
+                      className={`p-2.5 rounded-xl text-center text-xs font-bold transition cursor-pointer border ${
+                        depMonths === item.m
+                          ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                          : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      <div>{item.label}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5 font-mono">{(item.m * 400).toLocaleString()} ريال/فرد</div>
+                    </button>
+                  ))}
+                </div>
+                <div className="mt-2 flex items-center gap-2">
+                  <span className="text-[11px] text-slate-400">أو حدد عدد أشهر دقيق:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max="36"
+                    value={depMonths}
+                    onChange={(e) => setDepMonths(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-20 text-xs bg-slate-50 dark:bg-[#152033] border border-slate-200 dark:border-white/10 rounded-xl px-2 py-1 text-center font-mono font-bold text-amber-600 dark:text-amber-400 outline-none focus:border-amber-500"
+                  />
+                  <span className="text-[11px] text-slate-400">شهر استحقاق</span>
+                </div>
+              </div>
+
+              {/* Formula Preview Box */}
+              <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div className="text-amber-900 dark:text-amber-200">
+                  <span className="font-bold">معادلة الحساب النظامية: </span>
+                  <span className="font-mono">{depCount} مرافقين × {depMonths} شهر × 400 ريال شهرياً</span>
+                </div>
+                <div className="font-mono font-black text-amber-600 dark:text-amber-400 text-sm">
+                  = {(depCount * depMonths * 400).toLocaleString()} ريال سعودي
+                </div>
+              </div>
+
+              {/* Include Sponsor Iqama Renewal */}
+              <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#152033] border border-slate-200/60 dark:border-white/5 flex items-center justify-between">
+                <div>
+                  <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block cursor-pointer">
+                    تجديد إقامة الكفيل / المستضيف رب الأسرة
+                  </label>
+                  <span className="text-[11px] text-slate-400">
+                    إضافة رسوم الجوازات السنوية لرب الأسرة (650 ريال)
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={depIncludeSponsorIqama}
+                  onChange={(e) => setDepIncludeSponsorIqama(e.target.checked)}
+                  className="rounded text-amber-500 focus:ring-amber-500 h-5 w-5 cursor-pointer"
+                />
+              </div>
+
+              {/* Office Fee */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  أتعاب وإشراف المكتب (SAR):
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="25"
+                    value={depOfficeFee}
+                    onChange={(e) => setDepOfficeFee(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full text-xs rounded-xl border border-slate-200 bg-slate-50 p-2.5 pl-10 pr-3 outline-none dark:border-white/10 dark:bg-[#152033] dark:text-white focus:border-amber-500 font-mono font-bold transition"
+                  />
+                  <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-semibold">ريال</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: VISAS (EXIT/RE-ENTRY & VISIT EXTENSION) */}
+          {activeTab === 'visas' && (
+            <div className="bg-white/80 dark:bg-immersive-card backdrop-blur-md rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/50 dark:border-white/5 space-y-5">
+              <div className="border-b border-slate-150 dark:border-white/5 pb-3">
+                <h3 className="text-base font-black text-slate-850 dark:text-white flex items-center gap-2">
+                  <Plane className="h-5 w-5 text-amber-500" />
+                  <span>تأشيرات الخروج والعودة والنهائي وتمديد الزيارة</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  حساب الرسوم الرسمية للتأشيرات وفق المدد المحددة مع التأمين الطبي للزيارات
+                </p>
+              </div>
+
+              {/* Visa Type Selector */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  1. نوع التأشيرة أو المعاملة:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setVisaType('exit_single')}
+                    className={`p-3 rounded-2xl border text-right transition cursor-pointer ${
+                      visaType === 'exit_single'
+                        ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                        : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className="font-bold text-xs flex justify-between">
+                      <span>خروج وعودة مفردة</span>
+                      <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold">تبدأ من 200 ريال</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-1">200 ريال لأول شهرين + 100 ريال لكل شهر إضافي</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setVisaType('exit_multi')}
+                    className={`p-3 rounded-2xl border text-right transition cursor-pointer ${
+                      visaType === 'exit_multi'
+                        ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                        : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className="font-bold text-xs flex justify-between">
+                      <span>خروج وعودة متعددة</span>
+                      <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold">تبدأ من 500 ريال</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-1">500 ريال لأول 3 أشهر + 200 ريال لكل شهر إضافي</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setVisaType('final_exit')}
+                    className={`p-3 rounded-2xl border text-right transition cursor-pointer ${
+                      visaType === 'final_exit'
+                        ? 'border-emerald-500 bg-emerald-500/10 text-emerald-900 dark:text-emerald-300 ring-2 ring-emerald-500/20'
+                        : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className="font-bold text-xs flex justify-between">
+                      <span>تأشيرة خروج نهائي</span>
+                      <span className="text-[10px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded font-bold">مجانية 0 ريال</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-1">رسم حكومي مجاني أثناء سريان الإقامة (تحتسب الأتعاب فقط)</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setVisaType('visit_ext')}
+                    className={`p-3 rounded-2xl border text-right transition cursor-pointer ${
+                      visaType === 'visit_ext'
+                        ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                        : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className="font-bold text-xs flex justify-between">
+                      <span>تمديد تأشيرة زيارة عائلية</span>
+                      <span className="text-[10px] font-mono text-amber-600 dark:text-amber-400 font-bold">100 ريال / شهر</span>
+                    </div>
+                    <div className="text-[11px] text-slate-400 mt-1">تمديد عبر أبشر أفراد + وثيقة التأمين الطبي الإلزامية</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Number of Workers / People */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  2. عدد الأفراد أو العمال:
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="grid grid-cols-4 gap-2 flex-1">
+                    {[1, 2, 3, 5].map((count) => (
+                      <button
+                        key={count}
+                        type="button"
+                        onClick={() => setVisaWorkerCount(count)}
+                        className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition cursor-pointer ${
+                          visaWorkerCount === count
+                            ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                            : 'bg-slate-100 dark:bg-[#152033] text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                        }`}
+                      >
+                        {count} {count === 1 ? 'عامل' : 'عمال'}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="50"
+                    value={visaWorkerCount}
+                    onChange={(e) => setVisaWorkerCount(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-20 text-xs bg-slate-50 dark:bg-[#152033] border border-slate-200 dark:border-white/10 rounded-xl px-2 py-2 text-center font-mono font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* Duration Options depending on Visa Type */}
+              {visaType === 'exit_single' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                    3. مدة تأشيرة الخروج والعودة المفردة:
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { m: 1, label: 'شهر واحد (200 ريال)' },
+                      { m: 2, label: 'شهرين (200 ريال)' },
+                      { m: 3, label: '3 أشهر (300 ريال)' },
+                      { m: 6, label: '6 أشهر (600 ريال)' }
+                    ].map((item) => (
+                      <button
+                        key={item.m}
+                        type="button"
+                        onClick={() => setVisaSingleMonths(item.m)}
+                        className={`p-2.5 rounded-xl text-xs font-bold transition cursor-pointer text-center border ${
+                          visaSingleMonths === item.m
+                            ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                            : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {visaType === 'exit_multi' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                    3. مدة تأشيرة الخروج والعودة المتعددة:
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { m: 3, label: '3 أشهر (500 ريال)' },
+                      { m: 6, label: '6 أشهر (1,100 ريال)' },
+                      { m: 9, label: '9 أشهر (1,700 ريال)' },
+                      { m: 12, label: 'سنة كاملة (2,300 ريال)' }
+                    ].map((item) => (
+                      <button
+                        key={item.m}
+                        type="button"
+                        onClick={() => setVisaMultiMonths(item.m)}
+                        className={`p-2.5 rounded-xl text-xs font-bold transition cursor-pointer text-center border ${
+                          visaMultiMonths === item.m
+                            ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                            : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {visaType === 'visit_ext' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                      3. مدة تمديد الزيارة المطلوبة:
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[1, 2, 3].map((m) => (
+                        <button
+                          key={m}
+                          type="button"
+                          onClick={() => setVisaVisitDurationMonths(m)}
+                          className={`p-2.5 rounded-xl text-xs font-bold transition cursor-pointer text-center border ${
+                            visaVisitDurationMonths === m
+                              ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                              : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-600 dark:text-slate-300'
+                          }`}
+                        >
+                          <div>{m} {m === 1 ? 'شهر واحد' : m === 2 ? 'شهرين' : '3 أشهر'}</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5 font-mono">{m * 100} ريال بالجوازات</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Medical Insurance for Visit */}
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#152033] border border-slate-200/60 dark:border-white/5 flex items-center justify-between">
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block cursor-pointer">
+                        إدراج وثيقة التأمين الطبي لتمديد الزيارة
+                      </label>
+                      <span className="text-[11px] text-slate-400">
+                        إلزامي بالربط الآلي مع مجلس الضمان الصحي
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        step="5"
+                        value={visaInsuranceFee}
+                        onChange={(e) => setVisaInsuranceFee(Math.max(0, parseInt(e.target.value) || 0))}
+                        disabled={!visaIncludeInsurance}
+                        className="w-20 text-xs bg-white dark:bg-[#0c1322] border border-slate-200 dark:border-white/10 rounded-xl px-2 py-1 text-center font-mono font-bold text-slate-900 dark:text-white outline-none disabled:opacity-50"
+                      />
+                      <input
+                        type="checkbox"
+                        checked={visaIncludeInsurance}
+                        onChange={(e) => setVisaIncludeInsurance(e.target.checked)}
+                        className="rounded text-amber-500 focus:ring-amber-500 h-5 w-5 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Office Fee */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  أتعاب وإشراف المكتب لكل تأشيرة / فرد (SAR):
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="25"
+                    value={visaOfficeFee}
+                    onChange={(e) => setVisaOfficeFee(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full text-xs rounded-xl border border-slate-200 bg-slate-50 p-2.5 pl-10 pr-3 outline-none dark:border-white/10 dark:bg-[#152033] dark:text-white focus:border-amber-500 font-mono font-bold transition"
+                  />
+                  <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-semibold">ريال</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: DOMESTIC WORKERS & MUSANED */}
+          {activeTab === 'domestic' && (
+            <div className="bg-white/80 dark:bg-immersive-card backdrop-blur-md rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/50 dark:border-white/5 space-y-5">
+              <div className="border-b border-slate-150 dark:border-white/5 pb-3">
+                <h3 className="text-base font-black text-slate-850 dark:text-white flex items-center gap-2">
+                  <Home className="h-5 w-5 text-amber-500" />
+                  <span>العمالة المنزلية ومنصة مساند (للأفراد)</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  حساب تكاليف تأشيرات الاستقدام، نقل الكفالة للأفراد، وتجديد إقامات السائقين والخدم
+                </p>
+              </div>
+
+              {/* Service Type */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  1. نوع خدمة العمالة المنزلية:
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDomesticService('recruitment_visa')}
+                    className={`p-3 rounded-2xl border text-right transition cursor-pointer ${
+                      domesticService === 'recruitment_visa'
+                        ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                        : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className="font-bold text-xs">إصدار تأشيرة استقدام</div>
+                    <div className="text-[11px] text-slate-400 mt-1">2,000 ريال تأشيرة + 172.5 مساند + التأمين</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDomesticService('transfer')}
+                    className={`p-3 rounded-2xl border text-right transition cursor-pointer ${
+                      domesticService === 'transfer'
+                        ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                        : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className="font-bold text-xs">نقل كفالة عامل منزلي</div>
+                    <div className="text-[11px] text-slate-400 mt-1">نقل خدمات (2000 / 4000 / 6000 ريال)</div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setDomesticService('renewal')}
+                    className={`p-3 rounded-2xl border text-right transition cursor-pointer ${
+                      domesticService === 'renewal'
+                        ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                        : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-700 dark:text-slate-300'
+                    }`}
+                  >
+                    <div className="font-bold text-xs">تجديد إقامة سنوية</div>
+                    <div className="text-[11px] text-slate-400 mt-1">600 ريال بالجوازات (معفى من كرت العمل)</div>
+                  </button>
+                </div>
+              </div>
+
+              {/* Workers Count */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  2. عدد العمالة المنزلية:
+                </label>
+                <div className="flex items-center gap-3">
+                  <div className="grid grid-cols-4 gap-2 flex-1">
+                    {[1, 2, 3, 4].map((count) => (
+                      <button
+                        key={count}
+                        type="button"
+                        onClick={() => setDomesticWorkerCount(count)}
+                        className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition cursor-pointer ${
+                          domesticWorkerCount === count
+                            ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                            : 'bg-slate-100 dark:bg-[#152033] text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                        }`}
+                      >
+                        {count} {count === 1 ? 'عامل' : 'عمال'}
+                      </button>
+                    ))}
+                  </div>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={domesticWorkerCount}
+                    onChange={(e) => setDomesticWorkerCount(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-20 text-xs bg-slate-50 dark:bg-[#152033] border border-slate-200 dark:border-white/10 rounded-xl px-2 py-2 text-center font-mono font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500"
+                  />
+                </div>
+              </div>
+
+              {/* Recruitment Details */}
+              {domesticService === 'recruitment_visa' && (
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#152033] border border-slate-200/60 dark:border-white/5 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block cursor-pointer">
+                        وثيقة التأمين الإلزامي على عقود العمالة المنزلية (سنتين)
+                      </label>
+                      <span className="text-[11px] text-slate-400">
+                        مطلوبة نظامياً لحماية حقوق صاحب العمل والعامل
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        step="25"
+                        value={domesticInsuranceFee}
+                        onChange={(e) => setDomesticInsuranceFee(Math.max(0, parseInt(e.target.value) || 0))}
+                        disabled={!domesticIncludeInsurance}
+                        className="w-20 text-xs bg-white dark:bg-[#0c1322] border border-slate-200 dark:border-white/10 rounded-xl px-2 py-1 text-center font-mono font-bold text-slate-900 dark:text-white outline-none disabled:opacity-50"
+                      />
+                      <input
+                        type="checkbox"
+                        checked={domesticIncludeInsurance}
+                        onChange={(e) => setDomesticIncludeInsurance(e.target.checked)}
+                        className="rounded text-amber-500 focus:ring-amber-500 h-5 w-5 cursor-pointer"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Transfer Times */}
+              {domesticService === 'transfer' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                    3. عدد مرات نقل الخدمات السابقة للعامل:
+                  </label>
+                  <div className="grid grid-cols-3 gap-3">
+                    {[
+                      { times: 1, fee: 2000, label: 'المرة الأولى (2,000 ريال)' },
+                      { times: 2, fee: 4000, label: 'المرة الثانية (4,000 ريال)' },
+                      { times: 3, fee: 6000, label: 'المرة الثالثة فأكثر (6,000 ريال)' }
+                    ].map((item) => (
+                      <button
+                        key={item.times}
+                        type="button"
+                        onClick={() => setDomesticTransferTimes(item.times)}
+                        className={`p-3 rounded-2xl border text-right transition cursor-pointer ${
+                          domesticTransferTimes === item.times
+                            ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                            : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-700 dark:text-slate-300'
+                        }`}
+                      >
+                        <div className="font-bold text-xs">{item.label}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Renewal Penalty */}
+              {domesticService === 'renewal' && (
+                <div className="p-3.5 rounded-2xl bg-slate-50 dark:bg-[#152033] border border-slate-200/60 dark:border-white/5 flex items-center justify-between">
+                  <div>
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block cursor-pointer">
+                      احتساب غرامة تأخير تجديد الإقامة (500 ريال)
+                    </label>
+                    <span className="text-[11px] text-slate-400">
+                      تُفرض في حال مضي أكثر من 3 أيام على تاريخ انتهاء الإقامة
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={domesticLatePenalty}
+                    onChange={(e) => setDomesticLatePenalty(e.target.checked)}
+                    className="rounded text-amber-500 focus:ring-amber-500 h-5 w-5 cursor-pointer"
+                  />
+                </div>
+              )}
+
+              {/* Office Fee */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  أتعاب وإشراف المكتب لكل معاملة (SAR):
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="25"
+                    value={domesticOfficeFee}
+                    onChange={(e) => setDomesticOfficeFee(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full text-xs rounded-xl border border-slate-200 bg-slate-50 p-2.5 pl-10 pr-3 outline-none dark:border-white/10 dark:bg-[#152033] dark:text-white focus:border-amber-500 font-mono font-bold transition"
+                  />
+                  <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-semibold">ريال</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: TRAFFIC & VEHICLE REGISTRATIONS */}
+          {activeTab === 'traffic' && (
+            <div className="bg-white/80 dark:bg-immersive-card backdrop-blur-md rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/50 dark:border-white/5 space-y-5">
+              <div className="border-b border-slate-150 dark:border-white/5 pb-3">
+                <h3 className="text-base font-black text-slate-850 dark:text-white flex items-center gap-2">
+                  <Car className="h-5 w-5 text-amber-500" />
+                  <span>رسوم المرور ورخص السير ونقل الملكية (أبشر / تم)</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  حساب تكاليف تجديد الاستمارات، مبايعة المركبات، رخص القيادة، وفحص النظر والدوري
+                </p>
+              </div>
+
+              {/* Service Type */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                  1. نوع معاملة المرور:
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {[
+                    { id: 'vehicle_renewal', label: 'تجديد استمارة المركبة' },
+                    { id: 'ownership_transfer', label: 'نقل ملكية مركبة' },
+                    { id: 'license_renewal', label: 'تجديد رخصة القيادة' },
+                    { id: 'lost_damaged', label: 'بدل فاقد / تالف' }
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setTrafficService(s.id as any)}
+                      className={`p-2.5 rounded-xl text-center text-xs font-bold transition cursor-pointer border ${
+                        trafficService === s.id
+                          ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                          : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Vehicle Type (if renewal or transfer) */}
+              {(trafficService === 'vehicle_renewal' || trafficService === 'ownership_transfer') && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                    2. نوع المركبة واستخدامها:
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                    {[
+                      { id: 'private', label: 'سيارة خصوصي', fee: '300 ريال / 3 سنوات' },
+                      { id: 'pickup', label: 'نقل خاص (ونيت/بيك آب)', fee: '600 ريال / 3 سنوات' },
+                      { id: 'heavy', label: 'نقل عام / شاحنة', fee: '1,200 ريال / 3 سنوات' },
+                      { id: 'motorcycle', label: 'دراجة نارية', fee: '300 ريال / 3 سنوات' }
+                    ].map((v) => (
+                      <button
+                        key={v.id}
+                        type="button"
+                        onClick={() => setVehicleType(v.id as any)}
+                        className={`p-2.5 rounded-xl text-right text-xs font-bold transition cursor-pointer border ${
+                          vehicleType === v.id
+                            ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                            : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-600 dark:text-slate-300'
+                        }`}
+                      >
+                        <div>{v.label}</div>
+                        <div className="text-[10px] text-slate-400 mt-0.5 font-mono">{v.fee}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Late Penalty for Registration Renewal */}
+              {trafficService === 'vehicle_renewal' && (
+                <div className="space-y-3">
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#152033] border border-slate-200/60 dark:border-white/5 flex items-center justify-between">
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block">
+                        تطويف الاستمارة (سنوات التأخير المنتهية):
+                      </label>
+                      <span className="text-[11px] text-slate-400">
+                        100 ريال غرامة عن كل سنة تطويف بعد انتهاء المهلة (60 يوماً)
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {[0, 1, 2, 3].map((y) => (
+                        <button
+                          key={y}
+                          type="button"
+                          onClick={() => setVehicleLateYears(y)}
+                          className={`w-9 h-8 rounded-lg text-xs font-bold font-mono transition cursor-pointer ${
+                            vehicleLateYears === y
+                              ? 'bg-rose-500 text-white font-black'
+                              : 'bg-white dark:bg-[#0c1322] border border-slate-200 dark:border-white/10 text-slate-600 dark:text-slate-300'
+                          }`}
+                        >
+                          {y}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Periodic Inspection MVPI */}
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#152033] border border-slate-200/60 dark:border-white/5 flex items-center justify-between">
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block cursor-pointer">
+                        إدراج رسوم الفحص الفني الدوري للسيارات (MVPI)
+                      </label>
+                      <span className="text-[11px] text-slate-400">
+                        115 ريال شامل الضريبة لسلامة المركبة
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={trafficIncludeInspection}
+                      onChange={(e) => setTrafficIncludeInspection(e.target.checked)}
+                      className="rounded text-amber-500 focus:ring-amber-500 h-5 w-5 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Ownership Transfer Specifics */}
+              {trafficService === 'ownership_transfer' && (
+                <div className="p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-xs space-y-1">
+                  <div className="font-bold text-amber-900 dark:text-amber-200">
+                    مشتملات مبايعة ونقل الملكية الحكومية:
+                  </div>
+                  <ul className="text-[11px] text-amber-800 dark:text-amber-300 list-disc list-inside space-y-0.5">
+                    <li>رسوم المرور الرسمية ({vehicleType === 'private' ? '150 ريال للخصوصي' : '300 ريال للنقل الخاص'}).</li>
+                    <li>رسوم منصة أبشر / تم الإلكترونية للتحقق ونقل القيد (230 ريال).</li>
+                  </ul>
+                </div>
+              )}
+
+              {/* Driver License Renewal Specifics */}
+              {trafficService === 'license_renewal' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
+                      2. مدة سريان رخصة القيادة:
+                    </label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {[
+                        { yrs: 2, fee: 80, label: 'سنتين (80 ريال)' },
+                        { yrs: 5, fee: 200, label: '5 سنوات (200 ريال)' },
+                        { yrs: 10, fee: 400, label: '10 سنوات (400 ريال)' }
+                      ].map((item) => (
+                        <button
+                          key={item.yrs}
+                          type="button"
+                          onClick={() => setLicenseDuration(item.yrs)}
+                          className={`p-3 rounded-2xl border text-center transition cursor-pointer ${
+                            licenseDuration === item.yrs
+                              ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                              : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-700 dark:text-slate-300'
+                          }`}
+                        >
+                          <div className="font-bold text-xs">{item.label}</div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#152033] border border-slate-200/60 dark:border-white/5 flex items-center justify-between">
+                    <div>
+                      <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block cursor-pointer">
+                        إدراج فحص النظر والتقرير الطبي (منصة إفادة)
+                      </label>
+                      <span className="text-[11px] text-slate-400">
+                        100 ريال تقديري لدى المراكز الطبية المعتمدة
+                      </span>
+                    </div>
+                    <input
+                      type="checkbox"
+                      checked={licenseIncludeMedical}
+                      onChange={(e) => setLicenseIncludeMedical(e.target.checked)}
+                      className="rounded text-amber-500 focus:ring-amber-500 h-5 w-5 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Office Fee */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  أتعاب وإشراف المكتب على المعاملة (SAR):
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="25"
+                    value={trafficOfficeFee}
+                    onChange={(e) => setTrafficOfficeFee(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full text-xs rounded-xl border border-slate-200 bg-slate-50 p-2.5 pl-10 pr-3 outline-none dark:border-white/10 dark:bg-[#152033] dark:text-white focus:border-amber-500 font-mono font-bold transition"
+                  />
+                  <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-semibold">ريال</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: BALADY & MUNICIPAL COMMERCIAL LICENSES */}
+          {activeTab === 'balady' && (
+            <div className="bg-white/80 dark:bg-immersive-card backdrop-blur-md rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/50 dark:border-white/5 space-y-5">
+              <div className="border-b border-slate-150 dark:border-white/5 pb-3">
+                <h3 className="text-base font-black text-slate-850 dark:text-white flex items-center gap-2">
+                  <Store className="h-5 w-5 text-amber-500" />
+                  <span>رخص البلدية وإشغال المتاجر واللوحات (منصة بلدي)</span>
+                </h3>
+                <p className="text-xs text-slate-400 mt-1">
+                  حساب رسوم إشغال المتاجر، اللوحات الإعلانية المضيئة، الدفاع المدني والشهادات الصحية
+                </p>
+              </div>
+
+              {/* Store Area & Duration */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    1. مساحة المحل التجاري (م²):
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="5"
+                      step="5"
+                      value={baladyArea}
+                      onChange={(e) => setBaladyArea(Math.max(1, parseInt(e.target.value) || 1))}
+                      className="w-full text-xs rounded-xl border border-slate-200 bg-slate-50 p-2.5 pl-10 pr-3 outline-none dark:border-white/10 dark:bg-[#152033] dark:text-white focus:border-amber-500 font-mono font-bold transition"
+                    />
+                    <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-semibold">م²</span>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                    2. مدة سريان رخصة بلدي:
+                  </label>
+                  <div className="grid grid-cols-5 gap-1.5">
+                    {[1, 2, 3, 4, 5].map((yr) => (
+                      <button
+                        key={yr}
+                        type="button"
+                        onClick={() => setBaladyYears(yr)}
+                        className={`py-2 px-1 text-center rounded-xl text-xs font-bold transition cursor-pointer ${
+                          baladyYears === yr
+                            ? 'bg-amber-500 text-slate-950 font-black shadow-sm'
+                            : 'bg-slate-100 dark:bg-[#152033] text-slate-600 dark:text-slate-300 hover:bg-slate-200'
+                        }`}
+                      >
+                        {yr} {yr === 1 ? 'سنة' : 'سنوات'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Signboard details */}
+              <div className="space-y-3">
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300">
+                  3. نوع ومواصفات اللوحة الإعلانية للمحل:
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { id: 'illuminated', label: 'لوحة مضيئة', fee: '200 ريال / م²' },
+                    { id: 'regular', label: 'لوحة غير مضيئة', fee: '100 ريال / م²' },
+                    { id: 'none', label: 'بدون لوحة', fee: '0 ريال' }
+                  ].map((s) => (
+                    <button
+                      key={s.id}
+                      type="button"
+                      onClick={() => setBaladySignboardType(s.id as any)}
+                      className={`p-2.5 rounded-xl text-center text-xs font-bold transition cursor-pointer border ${
+                        baladySignboardType === s.id
+                          ? 'border-amber-500 bg-amber-500/10 text-amber-900 dark:text-amber-300 ring-2 ring-amber-500/20'
+                          : 'border-slate-200 dark:border-white/10 bg-slate-50 dark:bg-[#152033] text-slate-600 dark:text-slate-300'
+                      }`}
+                    >
+                      <div>{s.label}</div>
+                      <div className="text-[10px] text-slate-400 mt-0.5 font-mono">{s.fee}</div>
+                    </button>
+                  ))}
+                </div>
+
+                {baladySignboardType !== 'none' && (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-slate-400">مساحة اللوحة الإعلانية:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      step="0.5"
+                      value={baladySignboardArea}
+                      onChange={(e) => setBaladySignboardArea(Math.max(1, parseFloat(e.target.value) || 1))}
+                      className="w-20 text-xs bg-slate-50 dark:bg-[#152033] border border-slate-200 dark:border-white/10 rounded-xl px-2 py-1 text-center font-mono font-bold text-slate-900 dark:text-white outline-none focus:border-amber-500"
+                    />
+                    <span className="text-xs text-slate-400">متر مربع</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Addons Checkboxes */}
+              <div className="space-y-2 pt-1">
+                {/* Waste */}
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#152033] border border-slate-200/60 dark:border-white/5 flex items-center justify-between">
+                  <div>
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block cursor-pointer">
+                      رسوم جمع ونظافة النفايات البلدية
+                    </label>
+                    <span className="text-[11px] text-slate-400">
+                      250 ريال سنوياً تفرضها الأمانة
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={baladyIncludeWasteFee}
+                    onChange={(e) => setBaladyIncludeWasteFee(e.target.checked)}
+                    className="rounded text-amber-500 focus:ring-amber-500 h-5 w-5 cursor-pointer"
+                  />
+                </div>
+
+                {/* Civil Defense Salamah */}
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#152033] border border-slate-200/60 dark:border-white/5 flex items-center justify-between">
+                  <div>
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block cursor-pointer">
+                      شهادة سلامة الدفاع المدني الفورية (منصة سلامة)
+                    </label>
+                    <span className="text-[11px] text-slate-400">
+                      150 ريال للأنشطة غير الخطرة والمحلات الصغيرة
+                    </span>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={baladyIncludeCivilDefense}
+                    onChange={(e) => setBaladyIncludeCivilDefense(e.target.checked)}
+                    className="rounded text-amber-500 focus:ring-amber-500 h-5 w-5 cursor-pointer"
+                  />
+                </div>
+
+                {/* Health Certs */}
+                <div className="p-3 rounded-2xl bg-slate-50 dark:bg-[#152033] border border-slate-200/60 dark:border-white/5 flex items-center justify-between">
+                  <div>
+                    <label className="text-xs font-bold text-slate-800 dark:text-slate-200 block cursor-pointer">
+                      الشهادات الصحية للعاملين في الأنشطة الغذائية والمهنية
+                    </label>
+                    <span className="text-[11px] text-slate-400">
+                      60 ريال لكل عامل عبر منصة بلدي
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="0"
+                      max="30"
+                      value={baladyWorkersCount}
+                      onChange={(e) => setBaladyWorkersCount(Math.max(0, parseInt(e.target.value) || 0))}
+                      disabled={!baladyIncludeHealthCert}
+                      className="w-16 text-xs bg-white dark:bg-[#0c1322] border border-slate-200 dark:border-white/10 rounded-xl px-2 py-1 text-center font-mono font-bold text-slate-900 dark:text-white outline-none disabled:opacity-50"
+                    />
+                    <input
+                      type="checkbox"
+                      checked={baladyIncludeHealthCert}
+                      onChange={(e) => setBaladyIncludeHealthCert(e.target.checked)}
+                      className="rounded text-amber-500 focus:ring-amber-500 h-5 w-5 cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Office Fee */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1.5">
+                  أتعاب وإشراف المكتب على رخصة بلدي (SAR):
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    value={baladyOfficeFee}
+                    onChange={(e) => setBaladyOfficeFee(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full text-xs rounded-xl border border-slate-200 bg-slate-50 p-2.5 pl-10 pr-3 outline-none dark:border-white/10 dark:bg-[#152033] dark:text-white focus:border-amber-500 font-mono font-bold transition"
+                  />
+                  <span className="absolute left-3 top-2.5 text-xs text-slate-400 font-semibold">ريال</span>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* TAB 5: SINGLE FAST SERVICES CATALOG */}
           {activeTab === 'single' && (
             <div className="bg-white/80 dark:bg-immersive-card backdrop-blur-md rounded-3xl p-5 md:p-6 shadow-sm border border-slate-200/50 dark:border-white/5 space-y-4">
@@ -2045,6 +3584,48 @@ export default function FeeCalculator({
 
             {/* Instant Action Buttons */}
             <div className="space-y-2 pt-2">
+              {onConvertToTask && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const taskPlatform = 
+                      activeTab === 'domestic' ? 'musaned' :
+                      activeTab === 'sponsorship' || activeTab === 'work_permit' ? 'qiwa' :
+                      activeTab === 'balady' ? 'balady' :
+                      activeTab === 'traffic' ? 'absher' :
+                      activeTab === 'commercial' ? 'wzara' : 'jawazat';
+
+                    const newTask = {
+                      id: `task-${Date.now()}`,
+                      title: liveQuote.serviceTitle,
+                      clientName: clientName.trim() || 'عميل حاسبة الرسوم',
+                      clientPhone: clientPhone.trim() || undefined,
+                      platformId: taskPlatform,
+                      feeAmount: liveQuote.grandTotal,
+                      status: 'pending' as const,
+                      createdAt: new Date().toISOString(),
+                      notes: `معاملة مُنشأة آلياً من حاسبة الرسوم الحكومية.\n• الرسوم الحكومية: ${liveQuote.totalGovernmentFees.toLocaleString()} ريال\n• أتعاب المكتب: ${liveQuote.totalOfficeFees.toLocaleString()} ريال${liveQuote.vatAmount > 0 ? `\n• الضريبة: ${liveQuote.vatAmount.toLocaleString()} ريال` : ''}${liveQuote.totalDiscount > 0 ? `\n• الخصم: -${liveQuote.totalDiscount.toLocaleString()} ريال` : ''}\n• الإجمالي النهائي: ${liveQuote.grandTotal.toLocaleString()} ريال\n${quoteNotes ? `• ملاحظات: ${quoteNotes}` : ''}`,
+                      workspaceId
+                    };
+                    onConvertToTask(newTask);
+                    setConvertedTaskSuccess(true);
+                    setTimeout(() => setConvertedTaskSuccess(false), 3000);
+                  }}
+                  className={`w-full py-3 px-4 rounded-2xl text-xs font-black transition flex items-center justify-center gap-2 shadow-md cursor-pointer ${
+                    convertedTaskSuccess
+                      ? 'bg-emerald-600 text-white ring-2 ring-emerald-400'
+                      : 'bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white'
+                  }`}
+                >
+                  <Briefcase className="h-4 w-4" />
+                  <span>
+                    {convertedTaskSuccess
+                      ? '✓ تم تحويل الحسبة إلى معاملة رسمية فوراً!'
+                      : 'تحويل الحسبة إلى معاملة رسمية وتتبعها 🚀'}
+                  </span>
+                </button>
+              )}
+
               <button
                 type="button"
                 onClick={handleOpenPreview}
@@ -2136,7 +3717,7 @@ export default function FeeCalculator({
       {/* 3. Quotes History Modal */}
       {isHistoryOpen && (
         <QuotesHistoryModal
-          quotes={quotesHistory}
+          quotes={scopedQuotesHistory}
           onSelectQuote={(q) => {
             setCurrentQuoteForPreview(q);
             setIsHistoryOpen(false);

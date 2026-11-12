@@ -68,7 +68,7 @@ export interface PetitionDraft {
 export interface ServiceFeeItem {
   id: string;
   name: string;
-  category: 'commercial' | 'sponsorship' | 'iqama' | 'work_permit' | 'single' | 'custom';
+  category: 'commercial' | 'sponsorship' | 'iqama' | 'work_permit' | 'dependents' | 'visas' | 'domestic' | 'traffic' | 'balady' | 'single' | 'custom' | string;
   entity: string;
   governmentFee: number;
   defaultOfficeFee: number;
@@ -100,7 +100,7 @@ export interface SavedQuote {
   quoteNumber: string;
   clientName: string;
   clientPhone: string;
-  serviceType: 'commercial' | 'sponsorship' | 'iqama' | 'work_permit' | 'single' | 'custom';
+  serviceType: 'commercial' | 'sponsorship' | 'iqama' | 'work_permit' | 'dependents' | 'visas' | 'domestic' | 'traffic' | 'balady' | 'single' | 'custom' | string;
   serviceTitle: string;
   items: QuoteItem[];
   totalGovernmentFees: number;

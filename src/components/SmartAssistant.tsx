@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { MessageSquare, Send, Sparkles, Clipboard, Check, RefreshCw, AlertCircle, HelpCircle } from "lucide-react";
+import { MessageSquare, Send, Sparkles, Clipboard, Check, RefreshCw, AlertCircle, HelpCircle, ChevronDown, Trash2, X } from "lucide-react";
 
 import { getSaudiKnowledgeResponse } from "../utils/saudiKnowledge";
 
@@ -8,9 +8,12 @@ interface ChatMessage {
   role: "user" | "model";
   text: string;
   timestamp: string;
+  source?: string;
 }
 
 export default function SmartAssistant() {
+  const [aiProvider, setAiProvider] = useState<'deepseek' | 'gemini'>('deepseek');
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>(() => {
     const saved = localStorage.getItem("s_assistant_messages");
     if (saved) {
@@ -102,13 +105,13 @@ export default function SmartAssistant() {
     let finalReply = "";
 
     try {
-      // Setup timeout controller (25 seconds for reliable generation across cold starts)
+      // Setup timeout controller (35 seconds for reliable generation across cold starts)
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 25000);
+      const timeoutId = setTimeout(() => controller.abort(), 35000);
 
-      // Pass clean history (skip initial model greeting and error markers)
+      // Pass clean compact history (skip initial model greeting and error markers)
       const nonGreetingHistory = updatedMessages
-        .slice(-8)
+        .slice(-4)
         .filter(m => m.id !== "m-welcome" && !m.id?.startsWith("msg-err-") && !m.text?.includes("CHAT - 404"))
         .map(msg => ({
           role: msg.role,
@@ -118,12 +121,15 @@ export default function SmartAssistant() {
       const currentQuery = userMsg.text;
       const historyContext = nonGreetingHistory.slice(0, -1) || [];
 
+      let responseSource = aiProvider === 'deepseek' ? 'DeepSeek' : 'Gemini';
+
       const response = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           message: currentQuery,
-          history: historyContext
+          history: historyContext,
+          provider: aiProvider
         }),
         signal: controller.signal
       });
@@ -134,6 +140,9 @@ export default function SmartAssistant() {
         const data = await response.json();
         if (data && data.reply && data.reply.trim()) {
           finalReply = data.reply.trim();
+          if (data.source) {
+            responseSource = data.source;
+          }
         }
       } else {
         console.warn("Backend chat returned non-OK status:", response.status);
@@ -151,6 +160,7 @@ export default function SmartAssistant() {
       id: `msg-${Date.now() + 1}`,
       role: "model",
       text: finalReply,
+      source: aiProvider === 'deepseek' ? 'DeepSeek' : 'Gemini',
       timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
     };
 
@@ -159,19 +169,16 @@ export default function SmartAssistant() {
   };
 
   const handleClearChat = () => {
-    if (confirm("هل تريد بالتأكيد مسح كافة الرسائل والمحادثات السابقة والبدء من جديد؟")) {
-      localStorage.removeItem("s_assistant_messages");
-      setMessages([
-        {
-          id: "m-welcome-reset",
-          role: "model",
-          text: `تم إعادة ضبط المحادثة بنجاح! ⚡🤖
-
-تفضل بطرح سؤالك حول أي معاملة في المملكة، أو اطلب صياغة خطاب وسأساعدك فوراً.`,
-          timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
-        }
-      ]);
-    }
+    localStorage.removeItem("s_assistant_messages");
+    setMessages([
+      {
+        id: "m-welcome-reset",
+        role: "model",
+        text: `تم مسح سجل المحادثة بنجاح والبدء من جديد! ⚡🤖\n\nتفضل بطرح سؤالك حول أي معاملة في المملكة، وسأساعدك فوراً.`,
+        timestamp: new Date().toLocaleTimeString("ar-SA", { hour: "2-digit", minute: "2-digit" })
+      }
+    ]);
+    setShowClearConfirm(false);
   };
 
   const handleCopyText = (text: string, id: string) => {
@@ -223,36 +230,80 @@ export default function SmartAssistant() {
   };
 
   return (
-    <div id="smart-assistant-workspace" className="bg-white/80 dark:bg-immersive-card backdrop-blur-md rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/50 dark:border-white/5 flex flex-col h-[650px] relative overflow-hidden">
+    <div id="smart-assistant-workspace" className="bg-white/90 dark:bg-immersive-card backdrop-blur-md rounded-2xl p-5 sm:p-7 shadow-sm border border-slate-200/60 dark:border-white/10 flex flex-col h-[720px] relative overflow-hidden transition-all">
       
-      {/* Mini header section */}
-      <div className="flex items-center justify-between border-b border-slate-200/50 dark:border-white/5 pb-4 mb-4 shrink-0">
-        <div className="flex items-center gap-2 text-right">
-          <div className="p-2.5 bg-gradient-to-tr from-emerald-500 to-teal-600 text-white rounded-xl shadow-sm flex items-center justify-center">
-            <Sparkles className="h-5 w-5 animate-pulse" />
+      {/* Mini header section - spacious and uncrowded */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-slate-200/60 dark:border-white/10 pb-5 mb-5 gap-4 shrink-0">
+        <div className="flex items-center gap-3 text-right">
+          <div className="p-3 bg-gradient-to-tr from-emerald-500 to-teal-600 text-white rounded-2xl shadow-sm flex items-center justify-center shrink-0">
+            <Sparkles className="h-6 w-6 animate-pulse" />
           </div>
           <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-black text-slate-800 dark:text-white flex items-center gap-1.5 font-sans">
-                <span>المساعد الذكي للخدمات العامة</span>
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h2 className="text-base sm:text-lg font-black text-slate-800 dark:text-white font-sans">
+                المساعد والمستشار الذكي
               </h2>
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
                 نشط وجاهز
               </span>
             </div>
-            <p className="text-[11px] text-slate-400">مستشارك وسكرتيرك المعتمد لصياغة المعاريض وحساب الرسوم واللوائح الحكومية</p>
+            <p className="text-xs text-slate-400 mt-0.5">مستشارك وسكرتيرك المعتمد لصياغة المعاريض وحساب الرسوم واللوائح الحكومية</p>
           </div>
         </div>
 
-        <button 
-          onClick={handleClearChat}
-          className="text-xs flex items-center gap-1 text-rose-500 bg-rose-50 dark:bg-rose-955/20 dark:hover:bg-rose-900/40 hover:bg-rose-100 px-3 py-1.5 rounded-lg transition cursor-pointer font-bold"
-          title="مسح سجل المحادثة بالكامل"
-        >
-          <RefreshCw className="h-3 w-3" />
-          <span>مسح المحادثة</span>
-        </button>
+        {/* Actions Bar: AI Model Dropdown List + Delete Chat */}
+        <div className="flex flex-wrap items-center gap-3">
+          {/* AI Model Dropdown List (قائمة منسدلة) */}
+          <div className="relative inline-flex items-center">
+            <span className="absolute right-3.5 text-sm pointer-events-none">
+              {aiProvider === 'deepseek' ? '🐋' : '⚡'}
+            </span>
+            <select
+              id="ai-provider-select"
+              value={aiProvider}
+              onChange={(e) => setAiProvider(e.target.value as 'deepseek' | 'gemini')}
+              className="bg-slate-100 hover:bg-slate-200/70 dark:bg-[#152033] dark:hover:bg-[#1d2c47] text-slate-800 dark:text-slate-100 border border-slate-300 dark:border-white/10 rounded-xl py-2.5 pr-9 pl-9 text-xs sm:text-sm font-bold appearance-none transition focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-xs min-w-[210px]"
+              dir="rtl"
+            >
+              <option value="deepseek">محرك DeepSeek (ديب سيك)</option>
+              <option value="gemini">محرك Google Gemini (جيميني)</option>
+            </select>
+            <ChevronDown className="w-4 h-4 text-slate-400 absolute left-3 pointer-events-none" />
+          </div>
+
+          {/* Delete chat button with in-UI confirmation (no window.confirm block) */}
+          {showClearConfirm ? (
+            <div className="flex items-center gap-2 p-1.5 px-3 rounded-xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900/60 text-xs animate-fadeIn">
+              <span className="font-bold text-rose-700 dark:text-rose-300 text-[11px]">مسح المحادثة؟</span>
+              <button
+                type="button"
+                onClick={handleClearChat}
+                className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-bold text-[11px] transition shadow-xs cursor-pointer flex items-center gap-1"
+              >
+                <Check className="w-3 h-3" />
+                تأكيد
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowClearConfirm(false)}
+                className="px-2 py-1 rounded-lg bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-[11px] hover:bg-slate-300 transition cursor-pointer"
+              >
+                إلغاء
+              </button>
+            </div>
+          ) : (
+            <button 
+              type="button"
+              onClick={() => setShowClearConfirm(true)}
+              className="text-xs flex items-center gap-1.5 text-rose-600 dark:text-rose-400 bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/30 dark:hover:bg-rose-900/50 px-3.5 py-2.5 rounded-xl transition cursor-pointer font-bold border border-rose-200/60 dark:border-rose-900/40 shrink-0"
+              title="مسح سجل المحادثة بالكامل"
+            >
+              <Trash2 className="h-4 w-4" />
+              <span>مسح المحادثة</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Chat messages viewport */}
@@ -286,7 +337,18 @@ export default function SmartAssistant() {
 
                 {/* Sub info panel / Copies */}
                 <div className="mt-3 pt-2 border-t border-slate-300/20 dark:border-white/5 flex items-center justify-between gap-4 text-[9px] opacity-80 select-none shrink-0">
-                  <span className="font-mono">{msg.timestamp}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono">{msg.timestamp}</span>
+                    {isModel && (
+                      <span className={`text-[8px] font-bold px-1.5 py-0.5 rounded font-mono ${
+                        (msg.source || '').toLowerCase().includes('deepseek')
+                          ? 'bg-blue-500/20 text-blue-600 dark:text-blue-300 border border-blue-500/30'
+                          : 'bg-emerald-500/20 text-emerald-600 dark:text-emerald-300 border border-emerald-500/30'
+                      }`}>
+                        {msg.source ? msg.source : (aiProvider === 'deepseek' ? '🐋 DeepSeek' : '⚡ Gemini')}
+                      </span>
+                    )}
+                  </div>
 
                   {isModel && (
                     <button

@@ -1132,29 +1132,5 @@ export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
       canUseScratchpad: true,
       canAccessSettings: false,
     }
-  },
-  {
-    id: 'usr-saad-1',
-    username: 'saad_muaqeb',
-    displayName: 'سعد العتيبي (معقب معتمد)',
-    password: 'Saad@2026_pass',
-    role: 'employee',
-    workspaceName: 'مساحة المعقب سعد - الرياض',
-    workspaceId: 'ws-saad-riyadh',
-    phone: '0551234567',
-    email: 'saad@services.sa',
-    status: 'active',
-    createdAt: '2026-01-15',
-    notes: 'مكلف بمتابعة معاملات قوى والتأمينات الاجتماعية والجوازات بالرياض',
-    storagePolicy: 'local_only',
-    permissions: {
-      canUseCalculator: true,
-      canManageTasks: true,
-      canUseAI: true,
-      canViewPlatforms: true,
-      canEditPlatforms: false,
-      canUseScratchpad: true,
-      canAccessSettings: false,
-    }
   }
 ];

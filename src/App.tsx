@@ -44,11 +44,13 @@ import { UserManagement } from './components/UserManagement';
 import SmartAssistant from './components/SmartAssistant';
 import CalendarPage from './components/CalendarPage';
 import SettingsPage from './components/SettingsPage';
+import ServiceEncyclopedia from './components/ServiceEncyclopedia';
 
 // Icons
 import { 
   Building2, 
   Users,
+  BookOpen,
   ArrowRightLeft,
   UserCheck,
   ShieldAlert,
@@ -529,19 +531,19 @@ export default function App() {
   });
 
   // UI Navigation / Sidebar structure
-  const [activeTab, setActiveTab] = useState<'home' | 'platforms' | 'tasks' | 'calculator' | 'templates' | 'maareed' | 'notes' | 'calendar' | 'assistant' | 'settings' | 'users'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'platforms' | 'encyclopedia' | 'tasks' | 'calculator' | 'templates' | 'maareed' | 'notes' | 'calendar' | 'assistant' | 'settings' | 'users'>('home');
   const [sidebarCollapsed, setSidebarCollapsed] = useState<boolean>(false);
   const [sidebarSearch, setSidebarSearch] = useState<string>('');
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState<boolean>(false);
 
-  // Scoped workspace data for tasks and notes
+  // Scoped workspace data for tasks and notes (strict isolation: new accounts start at 0)
   const currentWorkspaceTasks = activeWorkspaceId === 'ws-main'
-    ? tasks
-    : tasks.filter(t => !t.workspaceId || t.workspaceId === activeWorkspaceId);
+    ? tasks.filter(t => !t.workspaceId || t.workspaceId === 'ws-main')
+    : tasks.filter(t => t.workspaceId === activeWorkspaceId);
 
   const currentWorkspaceNotes = activeWorkspaceId === 'ws-main'
-    ? notes
-    : notes.filter(n => !n.workspaceId || n.workspaceId === activeWorkspaceId);
+    ? notes.filter(n => !n.workspaceId || n.workspaceId === 'ws-main')
+    : notes.filter(n => n.workspaceId === activeWorkspaceId);
 
   // Platform list layout options
   const [platformSearch, setPlatformSearch] = useState('');
@@ -784,28 +786,38 @@ export default function App() {
 
   const handleSaveScopedTasks = (updatedScopedList: Task[]) => {
     if (activeWorkspaceId === 'ws-main') {
-      handleSaveTasks(updatedScopedList);
+      const stamped = updatedScopedList.map(t => ({
+        ...t,
+        workspaceId: t.workspaceId || 'ws-main'
+      }));
+      const otherTasks = tasks.filter(t => t.workspaceId && t.workspaceId !== 'ws-main');
+      handleSaveTasks([...otherTasks, ...stamped]);
     } else {
       const stamped = updatedScopedList.map(t => ({
         ...t,
         workspaceId: t.workspaceId || activeWorkspaceId
       }));
       // Retain tasks from other workspaces
-      const otherTasks = tasks.filter(t => t.workspaceId && t.workspaceId !== activeWorkspaceId);
+      const otherTasks = tasks.filter(t => t.workspaceId !== activeWorkspaceId);
       handleSaveTasks([...otherTasks, ...stamped]);
     }
   };
 
   const handleSaveScopedNotes = (updatedScopedNotes: QuickNote[]) => {
     if (activeWorkspaceId === 'ws-main') {
-      handleSaveNotes(updatedScopedNotes);
+      const stamped = updatedScopedNotes.map(n => ({
+        ...n,
+        workspaceId: n.workspaceId || 'ws-main'
+      }));
+      const otherNotes = notes.filter(n => n.workspaceId && n.workspaceId !== 'ws-main');
+      handleSaveNotes([...otherNotes, ...stamped]);
     } else {
       const stamped = updatedScopedNotes.map(n => ({
         ...n,
         workspaceId: n.workspaceId || activeWorkspaceId
       }));
       // Retain notes from other workspaces
-      const otherNotes = notes.filter(n => n.workspaceId && n.workspaceId !== activeWorkspaceId);
+      const otherNotes = notes.filter(n => n.workspaceId !== activeWorkspaceId);
       handleSaveNotes([...otherNotes, ...stamped]);
     }
   };
@@ -939,11 +951,12 @@ export default function App() {
   // Navigation Sidebar options list
   const sidebarTabs = [
     { id: 'home', label: 'الرئيسية والمؤشرات', icon: Grid, count: null, color: 'text-indigo-500' },
+    { id: 'encyclopedia', label: 'موسوعة المعقّب الشاملة', icon: BookOpen, count: '1447هـ', color: 'text-indigo-600' },
     { id: 'platforms', label: 'المنصات والروابط', icon: Layers, count: platforms.length, color: 'text-emerald-500' },
     { id: 'tasks', label: 'المعاملات والطلبات', icon: ClipboardCheck, count: currentWorkspaceTasks.filter(t => t.status !== 'completed').length, color: 'text-amber-500' },
+    { id: 'calculator', label: 'حاسبة المصاريف والأتعاب', icon: Calculator, count: 'محدث', color: 'text-emerald-500' },
     { id: 'maareed', label: 'مسودات ومعاريض واسترحامات', icon: ScrollText, count: petitions.length, color: 'text-amber-500' },
     { id: 'templates', label: 'النصوص والرسائل الجاهزة', icon: MessageSquare, count: templates.length, color: 'text-blue-500' },
-    { id: 'calculator', label: 'حاسبة المصاريف والأتعاب', icon: Calculator, count: 'محدث', color: 'text-emerald-500' },
     { id: 'notes', label: 'الملاحظات مذكراتي', icon: NotebookPen, count: currentWorkspaceNotes.length, color: 'text-rose-500' },
     { id: 'calendar', label: 'التقويم والتواريخ', icon: CalendarIcon, count: null, color: 'text-purple-500' },
     { id: 'assistant', label: 'المساعد الذكي الفوري', icon: Sparkles, count: 'AI', color: 'text-orange-500 shadow-sm' },
@@ -1294,7 +1307,7 @@ export default function App() {
                   </div>
                   <div>
                     <span className="text-2xl font-black font-mono text-slate-800 dark:text-white block">
-                      {tasks.filter(t => t.status !== 'completed').length}
+                      {currentWorkspaceTasks.filter(t => t.status !== 'completed').length}
                     </span>
                     <span className="text-[10px] text-slate-400">معاملة تحت التدقيق</span>
                   </div>
@@ -1334,7 +1347,7 @@ export default function App() {
                     <NotebookPen className="h-5 w-5 text-rose-500" />
                   </div>
                   <div>
-                    <span className="text-2xl font-black font-mono text-slate-800 dark:text-white block">{notes.length}</span>
+                    <span className="text-2xl font-black font-mono text-slate-800 dark:text-white block">{currentWorkspaceNotes.length}</span>
                     <span className="text-[10px] text-slate-400">ملاحظة مسودة</span>
                   </div>
                 </div>
@@ -1352,6 +1365,21 @@ export default function App() {
                   </h3>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <button
+                      onClick={() => setActiveTab('encyclopedia')}
+                      className="p-3.5 rounded-xl bg-gradient-to-r from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-slate-800 border border-indigo-200 dark:border-indigo-800/80 hover:border-indigo-500 text-right transition cursor-pointer flex items-center justify-between sm:col-span-2 shadow-xs"
+                    >
+                      <div>
+                        <h4 className="text-xs font-black text-indigo-900 dark:text-indigo-300 flex items-center gap-2">
+                          <BookOpen className="h-4 w-4 text-indigo-600" />
+                          <span>موسوعة المعقّب الذكية والشاملة</span>
+                          <span className="text-[9px] font-black bg-indigo-600 text-white px-2 py-0.5 rounded-full">إصدار 1447هـ جديد</span>
+                        </h4>
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-1">شروط المعاملات خطوة بخطوة، أكواد سداد، رادار الغرامات والمهل، ومشاركة الشروط بالواتساب للعميل بنقرة واحدة</p>
+                      </div>
+                      <ChevronLeft className="h-4.5 w-4.5 text-indigo-600" />
+                    </button>
+
                     <button
                       onClick={() => setActiveTab('platforms')}
                       className="p-3.5 rounded-xl bg-white dark:bg-immersive-card border border-slate-200/60 dark:border-white/5 hover:border-emerald-500 text-right transition cursor-pointer flex items-center justify-between"
@@ -1438,13 +1466,13 @@ export default function App() {
                       <FolderOpen className="h-4 w-4 text-amber-500" />
                     </h3>
 
-                    {tasks.filter(t => t.status !== 'completed').length === 0 ? (
+                    {currentWorkspaceTasks.filter(t => t.status !== 'completed').length === 0 ? (
                       <div className="text-center py-10 text-slate-400 text-[11px] font-bold">
                         رائع! لا توجد معاملات معلقة تحت التنفيذ حالياً.
                       </div>
                     ) : (
                       <div className="space-y-2.5 max-h-[220px] overflow-y-auto pr-0.5 custom-scrollbar">
-                        {tasks.filter(t => t.status !== 'completed').slice(0, 4).map((tk) => {
+                        {currentWorkspaceTasks.filter(t => t.status !== 'completed').slice(0, 4).map((tk) => {
                           const targetPlat = platforms.find(p => p.id === tk.platformId);
                           return (
                             <div key={tk.id} className="p-2.5 bg-slate-50 dark:bg-immersive-input-bg rounded-xl border border-slate-200/30 text-right text-xs">
@@ -1671,6 +1699,32 @@ export default function App() {
                 officeName={officeName} 
                 isLoggedIn={isLoggedIn}
                 workspaceId={activeWorkspaceId}
+                onConvertToTask={(newTask) => {
+                  handleSaveScopedTasks([newTask, ...currentWorkspaceTasks]);
+                  setActiveTab('tasks');
+                }}
+              />
+            </div>
+          )}
+
+          {/* ======================= TABS ENCYCLOPEDIA: COMPREHENSIVE SERVICES ENCYCLOPEDIA ======================= */}
+          {activeTab === 'encyclopedia' && (
+            <div className="space-y-6 animate-fade-in text-right">
+              <ServiceEncyclopedia 
+                officeName={officeName}
+                onAddTask={(title, clientName, notes) => {
+                  const newTask: Task = {
+                    id: 'tsk-' + Date.now(),
+                    title,
+                    clientName,
+                    status: 'pending',
+                    createdAt: new Date().toLocaleDateString('ar-SA'),
+                    notes,
+                    workspaceId: activeWorkspaceId
+                  };
+                  handleSaveScopedTasks([newTask, ...currentWorkspaceTasks]);
+                  setActiveTab('tasks');
+                }}
               />
             </div>
           )}
@@ -1887,7 +1941,7 @@ export default function App() {
           <button
             onClick={() => setMobileDrawerOpen(true)}
             className={`flex flex-col items-center justify-center h-full gap-1 transition-colors cursor-pointer ${
-              ['notes', 'templates', 'calendar', 'assistant', 'settings'].includes(activeTab)
+              ['encyclopedia', 'notes', 'templates', 'calendar', 'assistant', 'settings'].includes(activeTab)
                 ? 'text-indigo-600 dark:text-indigo-400 font-bold'
                 : 'text-slate-400 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
             }`}

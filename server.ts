@@ -33,14 +33,14 @@ app.get("/api/health", (req, res) => {
 
 // AI Chat Assistant endpoint for Saudi Government and General Services
 app.post("/api/chat", async (req: express.Request, res: express.Response) => {
-  const { message, history } = req.body || {};
+  const { message, history, provider } = req.body || {};
 
   if (!message || typeof message !== "string" || !message.trim()) {
     res.status(400).json({ error: "الرسالة مطلوبة" });
     return;
   }
 
-  const result = await processChatMessage(message, history);
+  const result = await processChatMessage(message, history, provider);
   res.json(result);
 });
 

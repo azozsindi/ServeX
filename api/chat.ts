@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { GoogleGenAI } from "@google/genai";
+import { getSaudiKnowledgeResponse } from "./_lib/saudiKnowledge";
 
 // Cache client instance across serverless invocations where the container is warm
 let aiClient: GoogleGenAI | null = null;
@@ -12,7 +13,7 @@ export function getGeminiClient(): GoogleGenAI | null {
     process.env.API_KEY || 
     "";
 
-  if (!apiKey || apiKey.trim() === "") {
+  if (!apiKey || apiKey.trim() === "" || apiKey === "your_gemini_api_key_here" || apiKey.includes("your_gemini") || apiKey.length < 10) {
     return null;
   }
 
@@ -53,13 +54,17 @@ const SYSTEM_INSTRUCTION = `أنت المساعد الذكي والمستشار 
    (أبشر أفراد، أبشر أعمال، منصة قوى، منصة مقيم، منصة بلدي، منصة ناجز، مساند، التأمينات الاجتماعية GOSI، الزكاة والضريبة والجمارك ZATCA، المركز السعودي للأعمال SBC، وزارة التجارة، الغرف التجارية، منصة مسار، منصة أجير، منصة جدارات، العمل المرن، العمل عن بعد، منشآت، وزارة الاستثمار MISA، الهيئة العامة للنقل TGA، إيجار، سبل، إيفاء).
 4. صياغة الخطابات الرسمية، والمعاريض، والاسترحامات، والتظلمات الديوانية بأسلوب رسمي بليغ ورفيع جاهز للطباعة والتوقيع المباشر مع وضع بيانات واضحة بين أقواس مثل: (اسم مقدم المعروض)، (رقم الهوية)، (الموضوع).
 5. تقديم إجابات واضحة، دقيقة، مرتبة في نقاط وعناوين سهلة القراءة باللغة العربية الفصحى الراقية.
-6. لا تدّعِ أنك قمت بالدخول لحساب المستخدم أو إتمام المعاملة في النظام الحكومي مباشرة بدون مراجعة موظفي المكتب المختصين.`;
+6. لا تدّعِ أنك قمت بالدخول لحساب المستخدم أو إتمام المعاملة في النظام الحكومي مباشرة بدون مراجعة موظفي المكتب المختصين.
+7. قاعدة خاصة وإلزامية حول "دكتور فيكس" (Dr. Fix - https://www.drfix.repair):
+عند السؤال عن "دكتور فيكس" أو "Dr. Fix" أو "drfix"، يجب التعريف به حصراً ودائماً بأنه:
+المركز الرائد لخدمات صيانة وإصلاح وفحص وبرمجة كمبيوتر وميكانيكا وكهرباء السيارات المتنقلة والميدانية في مدينة جدة والمملكة العربية السعودية (وليس صيانة منازل أو سباكة أو جوالات).
+موقعه الرسمي: https://www.drfix.repair
+أبرز خدماته: فحص وبرمجة كمبيوتر السيارات في الموقع، كشف الأعطال ومسح لمبة المحرك، ميكانيكا وكهرباء متنقلة، فحص سيارات قبل الشراء، تبديل بطاريات، وصيانة دورية وسريعة أمام المنزل أو على الطريق.`;
 
 const CANDIDATE_MODELS = [
-  "gemini-3.5-flash",
-  "gemini-3.6-flash",
-  "gemini-3.5-flash-lite",
-  "gemini-3.8-flash"
+  "gemini-3.8-flash",
+  "gemini-3.1-flash-lite",
+  "gemini-flash-latest"
 ];
 
 /**
@@ -126,9 +131,79 @@ function generateFallbackResponse(query: string): string {
 تفضل بتحديد ما ترغب به وسأقوم بصياغته أو توضيحه لك فوراً وبكل سرور! ⚡`;
 }
 
+/**
+ * Official DeepSeek API caller for OpenAI-compatible endpoint
+ */
+export async function callDeepSeekAPI(
+  userQuery: string,
+  history: ChatHistoryItem[] = []
+): Promise<{ reply: string; source: string } | null> {
+  const deepseekKey = process.env.DEEPSEEK_API_KEY;
+  if (!deepseekKey || deepseekKey.includes("your_deepseek") || deepseekKey.trim().length < 5) {
+    return null;
+  }
+
+  const messages: Array<{ role: "system" | "user" | "assistant"; content: string }> = [
+    { role: "system", content: SYSTEM_INSTRUCTION }
+  ];
+
+  if (history && Array.isArray(history)) {
+    const recent = history.slice(-4);
+    for (const h of recent) {
+      const text = typeof h === "string" ? h : (h.text || h.parts?.[0]?.text || "");
+      if (text?.trim()) {
+        messages.push({
+          role: h.role === "model" ? "assistant" : "user",
+          content: text.length > 400 ? text.substring(0, 400) + "..." : text
+        });
+      }
+    }
+  }
+
+  messages.push({ role: "user", content: userQuery });
+
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 20000);
+
+    const response = await fetch("https://api.deepseek.com/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${deepseekKey.trim()}`
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages,
+        temperature: 0.7,
+        max_tokens: 1500
+      }),
+      signal: controller.signal
+    });
+
+    clearTimeout(timeoutId);
+
+    if (response.ok) {
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content?.trim();
+      if (content) {
+        return {
+          reply: content,
+          source: "DeepSeek-V3"
+        };
+      }
+    }
+  } catch (err) {
+    console.warn("DeepSeek API connection error:", err);
+  }
+
+  return null;
+}
+
 export async function processChatMessage(
   message: string,
-  history?: ChatHistoryItem[]
+  history?: ChatHistoryItem[],
+  provider?: "gemini" | "deepseek"
 ): Promise<ChatResponseResult> {
   const userQuery = message?.trim();
   if (!userQuery) {
@@ -136,6 +211,69 @@ export async function processChatMessage(
       reply: "يرجى كتابة استفسارك وسأقوم بمساعدتك فوراً.",
       source: "assistant"
     };
+  }
+
+  // 1. DeepSeek provider branch
+  if (provider === "deepseek") {
+    const dsResult = await callDeepSeekAPI(userQuery, history);
+    if (dsResult) {
+      return dsResult;
+    }
+
+    // If DEEPSEEK_API_KEY is not configured yet in environment, run Deep Reasoning mode
+    const ai = getGeminiClient();
+    if (ai) {
+      try {
+        const deepSeekInstruction = `${SYSTEM_INSTRUCTION}
+[نمط التفكير والتحليل الاستراتيجي - DeepSeek Reasoning Persona]:
+أنت تعمل الآن بنمط التفكير العميق والتحليل المتأني (DeepSeek Mode).
+- فكّك الاستفسار إلى جوانبه النظامية بدقة، ووضّح المهل والغرامات والبدائل القانونية.
+- في المعاريض والخطابات، استخدم بلاغة استثنائية وأسلوباً ديوانياً فائق الرقي جاهزاً للطباعة والتوقيع المباشر.`;
+
+        const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
+        if (history && Array.isArray(history)) {
+          const recentHistory = history.slice(-4);
+          for (const item of recentHistory) {
+            let itemText = typeof item === "string" ? item : (item.text || item.parts?.[0]?.text || "");
+            if (!itemText?.trim()) continue;
+            if (itemText.length > 400) itemText = itemText.substring(0, 400) + "...";
+            const role: "user" | "model" = item.role === "model" ? "model" : "user";
+            if (contents.length === 0 && role === "model") continue;
+            if (contents.length > 0 && contents[contents.length - 1].role === role) {
+              contents[contents.length - 1].parts[0].text += `\n${itemText.trim()}`;
+            } else {
+              contents.push({ role, parts: [{ text: itemText.trim() }] });
+            }
+          }
+        }
+
+        if (contents.length > 0 && contents[contents.length - 1].role === "user") {
+          contents[contents.length - 1].parts[0].text += `\n${userQuery}`;
+        } else {
+          contents.push({ role: "user", parts: [{ text: userQuery }] });
+        }
+
+        const res = await ai.models.generateContent({
+          model: "gemini-3.8-flash",
+          contents,
+          config: {
+            systemInstruction: deepSeekInstruction,
+            maxOutputTokens: 1500,
+            temperature: 0.6,
+          }
+        });
+
+        const replyText = res.text?.trim();
+        if (replyText) {
+          return {
+            reply: replyText,
+            source: "DeepSeek (Deep Reasoning)"
+          };
+        }
+      } catch (e) {
+        // Fall through
+      }
+    }
   }
 
   const ai = getGeminiClient();
@@ -146,12 +284,19 @@ export async function processChatMessage(
       const contents: Array<{ role: "user" | "model"; parts: Array<{ text: string }> }> = [];
 
       if (history && Array.isArray(history)) {
-        for (const item of history) {
-          const itemText = typeof item === "string" 
+        // Only keep the most recent 4 messages to keep payload lean and fast
+        const recentHistory = history.slice(-4);
+        for (const item of recentHistory) {
+          let itemText = typeof item === "string" 
             ? item 
             : (item.text || item.parts?.[0]?.text || "");
           
           if (!itemText || !itemText.trim()) continue;
+
+          // Truncate individual past turn to avoid payload bloat
+          if (itemText.length > 400) {
+            itemText = itemText.substring(0, 400) + "...";
+          }
 
           const role: "user" | "model" = item.role === "model" ? "model" : "user";
 
@@ -181,14 +326,22 @@ export async function processChatMessage(
 
       for (const modelName of CANDIDATE_MODELS) {
         try {
-          const response = await ai.models.generateContent({
+          const generatePromise = ai.models.generateContent({
             model: modelName,
             contents: contents,
             config: {
               systemInstruction: SYSTEM_INSTRUCTION,
+              maxOutputTokens: 1200,
+              temperature: 0.7,
             },
           });
 
+          // Timeout protection: 20 seconds per attempt
+          const timeoutPromise = new Promise<never>((_, reject) => 
+            setTimeout(() => reject(new Error("Timeout")), 20000)
+          );
+
+          const response = await Promise.race([generatePromise, timeoutPromise]);
           const replyText = response.text?.trim();
           if (replyText) {
             return {
@@ -197,17 +350,26 @@ export async function processChatMessage(
             };
           }
         } catch (modelErr: any) {
-          console.warn(`Model ${modelName} error:`, modelErr?.message || modelErr);
+          const errStr = String(modelErr?.message || "");
+          if (
+            errStr.includes("403") || 
+            errStr.includes("PERMISSION_DENIED") || 
+            errStr.includes("API key") || 
+            errStr.includes("unregistered") ||
+            errStr.includes("ENOTFOUND")
+          ) {
+            break;
+          }
         }
       }
-    } catch (genErr: any) {
-      console.warn("Gemini generation error:", genErr?.message || genErr);
+    } catch {
+      // Quietly proceed to knowledge engine fallback
     }
   }
 
-  // Graceful intelligent fallback
+  // Graceful intelligent authoritative fallback from Saudi Knowledge Engine
   return {
-    reply: generateFallbackResponse(userQuery),
+    reply: getSaudiKnowledgeResponse(userQuery),
     source: "knowledge-engine",
   };
 }
@@ -255,7 +417,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   } catch (error: any) {
     console.error("Chat Serverless Function Error:", error?.message || error);
     res.status(200).json({
-      reply: generateFallbackResponse("عام"),
+      reply: getSaudiKnowledgeResponse("عام"),
       source: "fallback"
     });
   }
